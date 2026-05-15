@@ -1,0 +1,75 @@
+# Visual Studio / .NET common ignores
+
+# Build results
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+
+# VS temporary files, solution user options
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Publish results
+*.Publish.xml
+*.pubxml
+*.PublishProfiles
+
+# IIS Express
+IISExpress/*
+
+# Logs and databases
+*.log
+*.mdf
+*.ldf
+*.dbmdl
+
+# Symbols and intermediate files
+*.pdb
+*.mdb
+*.ilk
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+
+# Misc
+*.cache
+*.bak
+*.old
+*.orig
+
+# Ignore packages folder produced by some tools (per-project)
+**/packages/
+
+# Sensitive files (if present)
+appsettings.*.json
+secrets.json
+
+# Generated files
+obj/
+
+# TypeScript build info
+*.tsbuildinfo
