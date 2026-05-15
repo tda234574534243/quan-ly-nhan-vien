@@ -59,10 +59,29 @@ namespace QuanLyNhanVien.MVVM.View.SubView
                 bool? result = new MessageBoxCustom("Vui lòng chọn thai sản cần xóa!", MessageType.Warning, MessageButtons.Ok).ShowDialog();
                 return;
             }
-                
-            busSoThaiSan.XoaSoThaiSan(dtoSoThaiSan.Mats);
-            DataGridLoad();
-            bool? Result = new MessageBoxCustom("Xóa thai sản thành công!", MessageType.Success, MessageButtons.Ok).ShowDialog();
+            DataRowView row = dsThaiSanDtg.SelectedItem as DataRowView;
+            if (row == null)
+            {
+                bool? result = new MessageBoxCustom("Vui lòng chọn thai sản cần xóa!", MessageType.Warning, MessageButtons.Ok).ShowDialog();
+                return;
+            }
+
+            int mats;
+            if (!int.TryParse(row[0].ToString(), out mats))
+            {
+                bool? result = new MessageBoxCustom("ID không hợp lệ.", MessageType.Error, MessageButtons.Ok).ShowDialog();
+                return;
+            }
+
+            if (busSoThaiSan.XoaSoThaiSan(mats))
+            {
+                DataGridLoad();
+                bool? Result = new MessageBoxCustom("Xóa thai sản thành công!", MessageType.Success, MessageButtons.Ok).ShowDialog();
+            }
+            else
+            {
+                bool? Result = new MessageBoxCustom("Xóa thai sản thất bại.", MessageType.Error, MessageButtons.Ok).ShowDialog();
+            }
 
         }
 
@@ -125,9 +144,29 @@ namespace QuanLyNhanVien.MVVM.View.SubView
                 return;
             }
 
-            busSoBH.XoaSoBH(dtoSoBH.Mabh);
-            DataGridLoad();
-            bool? Result = new MessageBoxCustom("Xóa bảo hiểm thành công!", MessageType.Success, MessageButtons.Ok).ShowDialog();
+            DataRowView row = dtgBaoHiem.SelectedItem as DataRowView;
+            if (row == null)
+            {
+                bool? result = new MessageBoxCustom("Vui lòng chọn bảo hiểm cần xóa!", MessageType.Warning, MessageButtons.Ok).ShowDialog();
+                return;
+            }
+
+            int mabh;
+            if (!int.TryParse(row[0].ToString(), out mabh))
+            {
+                bool? result = new MessageBoxCustom("ID không hợp lệ.", MessageType.Error, MessageButtons.Ok).ShowDialog();
+                return;
+            }
+
+            if (busSoBH.XoaSoBH(mabh))
+            {
+                DataGridLoad();
+                bool? Result = new MessageBoxCustom("Xóa bảo hiểm thành công!", MessageType.Success, MessageButtons.Ok).ShowDialog();
+            }
+            else
+            {
+                bool? Result = new MessageBoxCustom("Xóa bảo hiểm thất bại.", MessageType.Error, MessageButtons.Ok).ShowDialog();
+            }
         }
 
         private void btnThemBaoHiem_Click(object sender, RoutedEventArgs e)
