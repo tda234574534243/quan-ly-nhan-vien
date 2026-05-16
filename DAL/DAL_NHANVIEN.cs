@@ -418,16 +418,20 @@ namespace DAL
         public string GetMaLuong(string maNV)
         {
             string maLuong = string.Empty;
-            CheckConnection();
-            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetNameById", connection))
+            if (connection.State != ConnectionState.Open) connection.Open();
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@MANV", int.TryParse(maNV, out int id) ? id : 0);
                 using (SqlDataReader sdr = cmd.ExecuteReader())
                 {
-                    if (sdr.Read())
+                    while (sdr.Read())
                     {
-                        maLuong = sdr[0].ToString();
+                        if (sdr[0].ToString() == maNV)
+                        {
+                            // column 2 is MALUONG according to GetAll mapping
+                            if (!sdr.IsDBNull(2)) maLuong = sdr[2].ToString();
+                            break;
+                        }
                     }
                 }
             }

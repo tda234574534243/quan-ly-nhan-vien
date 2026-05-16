@@ -96,17 +96,18 @@ namespace DAL
             if (connection.State != ConnectionState.Open) connection.Open();
             try
             {
-                using (SqlCommand cmd = new SqlCommand("SELECT MALUONG, LCB, PHUCAPCHUCVU, PHUCAPKHAC FROM BANGLUONG WHERE MALUONG=@maluong", connection))
+                using (SqlCommand cmd = new SqlCommand("SELECT MALUONG, LCB, PHUCAPCHUCVU, PHUCAPKHAC, GHICHU FROM BANGLUONG WHERE MALUONG=@maluong", connection))
                 {
                     cmd.Parameters.AddWithValue("@maluong", maluong ?? string.Empty);
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         if (reader.Read())
                         {
-                            dtoBangLuong.Maluong = maluong;
-                            dtoBangLuong.Lcb = Convert.ToDouble(reader[1].ToString());
-                            dtoBangLuong.Phucapchucvu = Convert.ToDouble(reader[2].ToString());
-                            dtoBangLuong.Phucapkhac = Convert.ToDouble(reader[3].ToString());
+                            dtoBangLuong.Maluong = !reader.IsDBNull(0) ? reader.GetString(0) : (maluong ?? string.Empty);
+                            dtoBangLuong.Lcb = !reader.IsDBNull(1) ? Convert.ToDouble(reader[1].ToString()) : 0.0;
+                            dtoBangLuong.Phucapchucvu = !reader.IsDBNull(2) ? Convert.ToDouble(reader[2].ToString()) : 0.0;
+                            dtoBangLuong.Phucapkhac = !reader.IsDBNull(3) ? Convert.ToDouble(reader[3].ToString()) : 0.0;
+                            dtoBangLuong.Ghichu = (reader.FieldCount > 4 && !reader.IsDBNull(4)) ? reader.GetString(4) : string.Empty;
                         }
                         return dtoBangLuong;
                     }
