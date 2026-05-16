@@ -38,17 +38,41 @@ namespace DAL
             if (storedHash == null) return false;
             if (storedHash.StartsWith("pbkdf2$"))
             {
-                var parts = storedHash.Split('$');
-                if (parts.Length != 4) return false;
-                int iter = int.Parse(parts[1]);
-                byte[] salt = Convert.FromBase64String(parts[2]);
-                byte[] expected = Convert.FromBase64String(parts[3]);
-                byte[] actual;
-                using (var pbkdf2 = new Rfc2898DeriveBytes(password ?? string.Empty, salt, iter))
+                try
                 {
-                    actual = pbkdf2.GetBytes(expected.Length);
+                    var parts = storedHash.Split('$');
+                    if (parts.Length != 4) return false;
+
+                    // helper to trim surrounding whitespace, quotes, and parentheses
+                    string Clean(string s)
+                    {
+                        if (s == null) return string.Empty;
+                        return s.Trim().Trim('"', '\'', '(', ')');
+                    }
+
+                    var iterPart = Clean(parts[1]);
+                    if (!int.TryParse(iterPart, out int iter) || iter <= 0) return false;
+
+                    var saltPart = Clean(parts[2]);
+                    var hashPart = Clean(parts[3]);
+
+                    byte[] salt = Convert.FromBase64String(saltPart);
+                    byte[] expected = Convert.FromBase64String(hashPart);
+                    byte[] actual;
+                    using (var pbkdf2 = new Rfc2898DeriveBytes(password ?? string.Empty, salt, iter))
+                    {
+                        actual = pbkdf2.GetBytes(expected.Length);
+                    }
+                    return FixedTimeEquals(actual, expected);
                 }
-                return FixedTimeEquals(actual, expected);
+                catch (FormatException)
+                {
+                    return false;
+                }
+                catch (ArgumentException)
+                {
+                    return false;
+                }
             }
 
             // legacy hex SHA256 stored; caller should handle migration if VerifyLegacy returns true

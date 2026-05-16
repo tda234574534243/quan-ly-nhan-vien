@@ -1,0 +1,25 @@
+-- Creates stored procedure app.usp_User_GetByUsername
+-- Returns: MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'app')
+BEGIN
+	EXEC('CREATE SCHEMA app');
+END
+GO
+
+CREATE OR ALTER PROCEDURE app.usp_User_GetByUsername
+	@TENDANGNHAP NVARCHAR(200)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	SELECT
+		MATK,
+		MALOAITK,
+		TENCHUTAIKHOAN,
+		TENDANGNHAP,
+		MATKHAU,
+		FailedLoginCount,
+		LockoutUntil
+	FROM TAIKHOAN
+	WHERE TENDANGNHAP = @TENDANGNHAP;
+END
+GO

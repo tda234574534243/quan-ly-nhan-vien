@@ -17,12 +17,38 @@ BEGIN
 	EXEC('CREATE SCHEMA [app];');
 END
 
+-- Ensure TAIKHOAN has lockout/audit columns required by application logic
+IF COL_LENGTH('dbo.TAIKHOAN','FailedLoginCount') IS NULL
+BEGIN
+	ALTER TABLE dbo.TAIKHOAN ADD FailedLoginCount INT NOT NULL CONSTRAINT DF_TAIKHOAN_FailedLoginCount DEFAULT(0);
+END
+IF COL_LENGTH('dbo.TAIKHOAN','LockoutUntil') IS NULL
+BEGIN
+	ALTER TABLE dbo.TAIKHOAN ADD LockoutUntil DATETIME2 NULL;
+END
+
 -- Create app schema wrapper stored procedures that delegate to dbo implementations or access dbo tables
 -- Get user by username
-IF OBJECT_ID('app.usp_User_GetByUsername','P') IS NULL
+IF OBJECT_ID('app.usp_User_GetByUsername','P') IS NOT NULL
 BEGIN
-	EXEC('CREATE PROCEDURE app.usp_User_GetByUsername @TENDANGNHAP NVARCHAR(200) AS BEGIN SET NOCOUNT ON; SELECT MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil FROM dbo.TAIKHOAN WHERE TENDANGNHAP = @TENDANGNHAP; END');
+	DROP PROCEDURE app.usp_User_GetByUsername;
 END
+EXEC('CREATE PROCEDURE app.usp_User_GetByUsername @TENDANGNHAP NVARCHAR(200) AS
+BEGIN
+	SET NOCOUNT ON;
+	IF OBJECT_ID(''dbo.usp_User_GetByUsername'',''P'') IS NOT NULL
+	BEGIN
+		-- delegate to dbo implementation using sp_executesql with parameter
+		EXEC sp_executesql N''EXEC dbo.usp_User_GetByUsername @TENDANGNHAP=@p'', N''@p NVARCHAR(200)'', @p = @TENDANGNHAP;
+		RETURN;
+	END
+	DECLARE @sql NVARCHAR(MAX);
+	IF COL_LENGTH(''dbo.TAIKHOAN'',''FailedLoginCount'') IS NULL
+		SET @sql = N''SELECT MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, 0 AS FailedLoginCount, NULL AS LockoutUntil FROM dbo.TAIKHOAN WHERE TENDANGNHAP = @p'';
+	ELSE
+		SET @sql = N''SELECT MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil FROM dbo.TAIKHOAN WHERE TENDANGNHAP = @p'';
+	EXEC sp_executesql @sql, N''@p NVARCHAR(200)'', @p = @TENDANGNHAP;
+END');
 
 -- Wrappers for user CRUD that call the dbo stored procs (if present) or directly perform actions
 IF OBJECT_ID('app.usp_User_Create','P') IS NULL
@@ -88,9 +114,17 @@ DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [app_role];
 -- Create database user for application if not exists and add to role
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = @appUser)
 BEGIN
-	-- Create user mapped to same-named login; adjust as necessary
-	SET @sql = N'IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N''' + @appUser + N''') BEGIN PRINT ''Server login does not exist: ' + @appUser + '''; END ELSE BEGIN CREATE USER [' + @appUser + N'] FOR LOGIN [' + @appUser + N']; END';
-	EXEC(@sql);
+	-- Prefer creating a database user mapped to an existing server login.
+	IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = @appUser)
+	BEGIN
+		SET @sql = N'CREATE USER [' + @appUser + N'] FOR LOGIN [' + @appUser + N'];';
+		EXEC(@sql);
+	END
+	ELSE
+	BEGIN
+		-- Server login not found. Do not attempt to create contained users automatically.
+		PRINT 'Server login [' + @appUser + '] does not exist. Please create a server login named ''' + @appUser + ''' and then run this script, or create a database user ''' + @appUser + ''' manually.';
+	END
 END
 
 -- Add to role

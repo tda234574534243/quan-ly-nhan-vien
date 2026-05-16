@@ -6,11 +6,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
+using System.IO;
 using DTO;
 namespace DAL
 {
     public class DAL_TAIKHOAN : KetNoi
     {
+        private void LogDebug(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? ".", "logs");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                var path = Path.Combine(dir, "auth.log");
+                File.AppendAllText(path, $"[{DateTime.UtcNow:O}] {message}\r\n");
+            }
+            catch { }
+        }
+
         private void Audit(string eventType, string username, string target, string details)
         {
             try
@@ -114,6 +127,7 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
+            LogDebug($"KiemTraTaiKhoan: checking username='{tk._TENDANGNHAP}'");
             try
             {
                 // Load account including lockout info via stored procedure wrapper (app schema)
@@ -123,33 +137,44 @@ namespace DAL
                     cmd.Parameters.AddWithValue("@TENDANGNHAP", tk._TENDANGNHAP ?? string.Empty);
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
-                        if (!reader.Read()) return false;
+                        if (!reader.Read())
+                        {
+                            LogDebug($"KiemTraTaiKhoan: user '{tk._TENDANGNHAP}' not found");
+                            return false;
+                        }
 
                         int matk = Convert.ToInt32(reader[0]);
                         int maloaitk = Convert.ToInt32(reader[1]);
                         string tenchu = reader[2].ToString();
-                        string stored = reader[4].ToString();
+                        string stored = reader.IsDBNull(4) ? string.Empty : reader[4].ToString();
+                        if (stored != null) stored = stored.Trim();
                         int failed = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader[5]);
                         DateTime? lockoutUntil = reader.IsDBNull(6) ? (DateTime?)null : Convert.ToDateTime(reader[6]);
+                        LogDebug($"KiemTraTaiKhoan: user={tk._TENDANGNHAP} matk={matk} storedPrefix={(stored?.Length>10?stored.Substring(0,10):stored)} failed={failed} lockout={lockoutUntil}");
 
                         // Check lockout
                         if (lockoutUntil.HasValue && lockoutUntil.Value > DateTime.UtcNow)
                         {
+                            LogDebug($"KiemTraTaiKhoan: account locked until {lockoutUntil.Value:O}");
                             Audit("LoginBlocked", tk._TENDANGNHAP, matk.ToString(), "Account locked");
                             return false;
                         }
 
                         var h = new Hash256();
-                        // verify PBKDF2
-                        bool verified = stored.StartsWith("pbkdf2$", StringComparison.Ordinal) ? h.Verify(tk._MATKHAU, stored) : false;
+                        if (tk._MATKHAU != null) tk._MATKHAU = tk._MATKHAU.Trim();
+                        bool verified = false;
 
-                        if (!verified && !stored.StartsWith("pbkdf2$", StringComparison.Ordinal))
+                        // 1) PBKDF2 stored format
+                        if (stored.StartsWith("pbkdf2$", StringComparison.Ordinal))
                         {
-                            // legacy unsalted hex SHA256: verify and migrate to pbkdf2
-                            if (h.VerifyLegacySha256(tk._MATKHAU, stored))
+                            verified = h.Verify(tk._MATKHAU, stored);
+                        }
+                        else
+                        {
+                            // 2) Plaintext stored password (legacy developer/test data): accept and migrate
+                            if (StringComparer.Ordinal.Equals(stored, tk._MATKHAU))
                             {
                                 verified = true;
-                                // migrate
                                 string newHash = h.CreateHash(tk._MATKHAU);
                                 reader.Close();
                                 using (SqlCommand upd = new SqlCommand("UPDATE TAIKHOAN SET MATKHAU = @matkhau WHERE MATK = @matk", connection))
@@ -158,10 +183,57 @@ namespace DAL
                                     upd.Parameters.AddWithValue("@matk", matk);
                                     upd.ExecuteNonQuery();
                                 }
-                                Audit("LoginSuccess_Migrated", tk._TENDANGNHAP, matk.ToString(), "Login successful; password migrated to PBKDF2");
+                                Audit("LoginSuccess_MigratedPlain", tk._TENDANGNHAP, matk.ToString(), "Login successful; plaintext password migrated to PBKDF2");
+                            }
+                            else
+                            {
+                                // 3) legacy unsalted hex SHA256: verify and migrate to pbkdf2
+                                if (h.VerifyLegacySha256(tk._MATKHAU, stored))
+                                {
+                                    verified = true;
+                                    string newHash = h.CreateHash(tk._MATKHAU);
+                                    reader.Close();
+                                    using (SqlCommand upd = new SqlCommand("UPDATE TAIKHOAN SET MATKHAU = @matkhau WHERE MATK = @matk", connection))
+                                    {
+                                        upd.Parameters.AddWithValue("@matkhau", newHash ?? string.Empty);
+                                        upd.Parameters.AddWithValue("@matk", matk);
+                                        upd.ExecuteNonQuery();
+                                    }
+                                    Audit("LoginSuccess_Migrated", tk._TENDANGNHAP, matk.ToString(), "Login successful; password migrated to PBKDF2");
+                                }
+                                else
+                                {
+                                    // 4) legacy raw SHA256 stored as base64 (common): verify and migrate
+                                    try
+                                    {
+                                        byte[] raw = Convert.FromBase64String(stored);
+                                        if (raw != null && raw.Length == 32)
+                                        {
+                                            using (var sha = System.Security.Cryptography.SHA256.Create())
+                                            {
+                                                var pwdBytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(tk._MATKHAU ?? string.Empty));
+                                                if (pwdBytes.SequenceEqual(raw))
+                                                {
+                                                    verified = true;
+                                                    string newHash = h.CreateHash(tk._MATKHAU);
+                                                    reader.Close();
+                                                    using (SqlCommand upd = new SqlCommand("UPDATE TAIKHOAN SET MATKHAU = @matkhau WHERE MATK = @matk", connection))
+                                                    {
+                                                        upd.Parameters.AddWithValue("@matkhau", newHash ?? string.Empty);
+                                                        upd.Parameters.AddWithValue("@matk", matk);
+                                                        upd.ExecuteNonQuery();
+                                                    }
+                                                    Audit("LoginSuccess_Migrated", tk._TENDANGNHAP, matk.ToString(), "Login successful; password migrated to PBKDF2 (from base64)");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch { }
+                                }
                             }
                         }
 
+                        LogDebug($"KiemTraTaiKhoan: verification result={verified}");
                         if (verified)
                         {
                             // reset failed counter
@@ -174,6 +246,7 @@ namespace DAL
                             tk._MATK = matk;
                             tk._MALOAITK = maloaitk;
                             tk._TENCHUTAIKHOAN = tenchu;
+                            LogDebug($"KiemTraTaiKhoan: login success for user={tk._TENDANGNHAP} matk={matk}");
                             Audit("LoginSuccess", tk._TENDANGNHAP, matk.ToString(), "Login successful");
                             return true;
                         }
@@ -213,6 +286,7 @@ namespace DAL
                             if (rf != null) newFailed = Convert.ToInt32(rf);
                         }
 
+                        LogDebug($"KiemTraTaiKhoan: failed login count after increment={newFailed} threshold={threshold}");
                         if (newFailed >= threshold)
                         {
                             DateTime lockUntil = DateTime.UtcNow.AddMinutes(minutes);
@@ -222,9 +296,11 @@ namespace DAL
                                 lockc.Parameters.AddWithValue("@matk", matk);
                                 lockc.ExecuteNonQuery();
                             }
+                            LogDebug($"KiemTraTaiKhoan: locking account matk={matk} until {lockUntil:O}");
                             Audit("LoginLocked", tk._TENDANGNHAP, matk.ToString(), "Account locked due to failed logins");
                         }
 
+                        LogDebug($"KiemTraTaiKhoan: login failed for user={tk._TENDANGNHAP}");
                         Audit("LoginFailure", tk._TENDANGNHAP, null, "Login failed: bad credentials");
                         return false;
                     }

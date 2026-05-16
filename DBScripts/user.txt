@@ -1,0 +1,13 @@
+USE master;
+GO
+
+IF NOT EXISTS (
+    SELECT * 
+    FROM sys.server_principals 
+    WHERE name = 'app_user'
+)
+BEGIN
+    CREATE LOGIN app_user
+    WITH PASSWORD = 'StrongPassword123!';
+END
+GO
