@@ -1,21 +1,21 @@
-# QUANLYNHANVIEN — Overview
+ # QUANLYNHANVIEN — Tổng quan
 
-This repository contains a personnel-management desktop application (targeting .NET Framework 4.8) with user and role management and several database-side security features.
+Kho chứa mã cho ứng dụng quản lý nhân viên (desktop) dùng .NET Framework 4.8, có chức năng quản lý người dùng/role và một số cơ chế bảo mật cơ sở dữ liệu.
 
-Key parts of the project:
+Thành phần chính trong dự án:
 
-- Application code: DAL/ contains data-access logic used by the UI.
-- Database scripts: DBScripts/ contains core DDL and DBScripts/StoredProcedures/ contains individual stored-procedure files (SSDT-friendly).
-- Security utilities: DAL/Hash256.cs implements PBKDF2 hashing and legacy-hash helpers; tools/generate_password_hash.ps1 helps generate pbkdf2 strings for manual DB updates.
+- Mã ứng dụng: thư mục `DAL/` chứa logic truy cập dữ liệu dùng bởi UI.
+- Script CSDL: `DBScripts/` chứa DDL chính, `DBScripts/StoredProcedures/` chứa từng file stored-procedure riêng (tương thích SSDT).
+- Tiện ích bảo mật: `DAL/Hash256.cs` chứa PBKDF2 và helper cho định dạng cũ; `tools/generate_password_hash.ps1` tạo chuỗi pbkdf2 để cập nhật trong DB.
 
-## Prerequisites
+## Yêu cầu trước khi cài
 
-- Visual Studio (for building the .NET Framework 4.8 project)
-- SQL Server instance and SSMS for running deployment scripts
+- Visual Studio (dùng để build dự án .NET Framework 4.8)
+- SQL Server và SSMS để chạy script cài đặt
 - .NET Framework 4.8 runtime
 - PowerShell (powershell.exe)
 
-## Quick setup summary
+## Tóm tắt cài đặt nhanh
 
 1. Build the solution in Visual Studio.
 2. Create a database (e.g. QUANLYNHANVIEN) and run `DBScripts/init_security.sql` in SSMS to create core tables.

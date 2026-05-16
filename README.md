@@ -1,82 +1,80 @@
 # QUANLYNHANVIEN
 
-A personnel management desktop application (targeting .NET Framework 4.8) that demonstrates user/role management and database security practices.
+Ứng dụng quản lý nhân viên (desktop) — target .NET Framework 4.8. Ứng dụng có quản lý người dùng, vai trò và nhiều tính năng bảo mật cơ sở dữ liệu.
 
-## Prerequisites
+## Yêu cầu trước khi cài
 
-- Visual Studio (2019/2022/2026) with .NET Framework 4.8 workload
-- SQL Server (LocalDB / Express / Developer / full instance) and SSMS
+- Visual Studio (có workload .NET Framework 4.8)
+- SQL Server (LocalDB/Express/Developer/full) và SQL Server Management Studio (SSMS)
 - PowerShell (powershell.exe)
 
-## Installation & Database setup
+## Hướng dẫn cài đặt & chuẩn bị cơ sở dữ liệu
 
-1. Clone the repository:
+1. Clone repository:
    ```powershell
    git clone https://github.com/tda234574534243/quan-ly-nhan-vien.git
    cd quan-ly-nhan-vien
    ```
 
-2. Build the solution
-   - Open the solution in Visual Studio and build (Debug configuration recommended for testing).
+2. Build project
+   - Mở solution trong Visual Studio và build (chế độ Debug để test).
 
-3. Create and prepare the database
-   - Create a database named `QUANLYNHANVIEN` (or modify the connection string to a different database).
-   - In SSMS, open and execute `DBScripts/init_security.sql` to create core tables and initial parameters.
-   - Deploy stored procedures: run each `.sql` file in `DBScripts/StoredProcedures/` so they exist as separate objects in the target DB.
+3. Tạo và chuẩn bị database
+   - Tạo database `QUANLYNHANVIEN` (hoặc dùng DB khác và cập nhật connection string).
+   - Trong SSMS, mở và chạy `DBScripts/init_security.sql` để tạo bảng và tham số ban đầu.
+   - Triển khai stored procedure: chạy từng file `.sql` trong `DBScripts/StoredProcedures/` để tạo từng đối tượng riêng lẻ trong DB.
 
-4. Verify stored procedure output
-   - Run in SSMS:
+4. Kiểm tra kết quả stored procedure
+   - Chạy trong SSMS:
      ```sql
      EXEC app.usp_User_GetByUsername @TENDANGNHAP = 'ADMIN';
      ```
-   - Confirm the returned columns are in this order:
-     `MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil`.
+   - Xác nhận các cột trả về theo thứ tự: `MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil`.
 
-5. Configure the application connection
-   - Update the connection string in the application configuration (App.config) to point to your SQL Server instance. Prefer Windows Authentication in production.
+5. Cấu hình kết nối cho ứng dụng
+   - Cập nhật connection string trong App.config để trỏ tới SQL Server. Nên dùng Windows Authentication cho môi trường production.
 
-6. Create or repair an admin account
-   - Use the app UI to create users, or set a password directly from PowerShell:
+6. Tạo hoặc sửa tài khoản ADMIN
+   - Dùng UI ứng dụng để tạo user, hoặc tạo mật khẩu bằng PowerShell:
      ```powershell
      powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate_password_hash.ps1 -password "1" -username "ADMIN"
      ```
-     - Copy the printed `UPDATE` SQL and execute it in SSMS to set the ADMIN password.
-     - If the account is locked, reset counters in SSMS:
+     - Sao chép lệnh `UPDATE` được in ra và chạy trong SSMS để cập nhật mật khẩu ADMIN.
+     - Nếu tài khoản bị khoá, reset counters:
        ```sql
        UPDATE TAIKHOAN SET FailedLoginCount = 0, LockoutUntil = NULL WHERE TENDANGNHAP = 'ADMIN';
        ```
 
-## Implemented security features
+## Các tính năng bảo mật đã triển khai
 
-- PBKDF2 password hashing (DAL/Hash256.cs) with format: `pbkdf2$<iterations>$<saltB64>$<hashB64>`
-- Legacy-hash migration (plaintext, hex-SHA256, base64-SHA256) to PBKDF2 on successful login
-- Account lockout and failure counters (`FailedLoginCount`, `LockoutUntil`, configurable via `THAMSO`)
-- Audit logging (dbo.AuditLog and dbo.usp_AuditLog_Add)
-- Parameterized SQL usage in DAL to reduce SQL injection risk
+- Băm mật khẩu PBKDF2 (DAL/Hash256.cs) với định dạng: `pbkdf2$<iterations>$<saltB64>$<hashB64>`
+- Hỗ trợ di chuyển (migrate) từ dạng băm cũ (plaintext, SHA256 hex, SHA256 base64) sang PBKDF2 khi đăng nhập thành công
+- Cơ chế khoá tài khoản dựa trên `FailedLoginCount` và `LockoutUntil` (tham số có thể cấu hình trong bảng `THAMSO`)
+- Ghi nhật ký audit vào bảng `AuditLog` bằng stored procedure
+- Sử dụng parameterized SQL trong DAL để giảm rủi ro SQL injection
 
-## Recommended hardening
+## Khuyến nghị bảo mật
 
-- Use least-privileged SQL accounts: create a DB user that only has `EXECUTE` on stored procedures used by the app.
-- Explicitly GRANT/REVOKE permissions for stored procedures and deny direct table access.
-- Ensure `MATKHAU` column can store full PBKDF2 strings (e.g., `NVARCHAR(512)` or `VARCHAR(MAX)`).
-- Protect configuration files and use encrypted connection strings (ProtectedConfiguration).
-- Consider SQL Server features: Always Encrypted, Transparent Data Encryption (TDE), SQL Audit, and Row-Level Security.
-- Secure logging and avoid storing sensitive data in plain text logs.
+- Sử dụng tài khoản SQL có quyền ít nhất: chỉ cấp `EXECUTE` cho stored procedures cần thiết, cấm truy cập trực tiếp vào bảng.
+- Cấp quyền GRANT/REVOKE rõ ràng cho procedures và từ chối quyền truy cập bảng.
+- Đảm bảo cột `MATKHAU` đủ dài để lưu chuỗi PBKDF2 đầy đủ (ví dụ `NVARCHAR(512)` hoặc `VARCHAR(MAX)`).
+- Bảo vệ file cấu hình (mã hoá connection string), bảo mật file log.
+- Cân nhắc sử dụng tính năng SQL Server: Always Encrypted, TDE, SQL Audit, Row-Level Security.
 
-## Troubleshooting
+## Xử lý sự cố
 
-- If login fails:
-  - Inspect `MATKHAU` in DB for the account and ensure it matches `pbkdf2$...` format without extra parentheses.
-  - Verify `app.usp_User_GetByUsername` columns are returned in the expected order.
-  - Reset `FailedLoginCount` and `LockoutUntil` for testing if the account is locked.
-  - Check `QuanLyNhanVien/bin/Debug/logs/auth.log` for verification traces.
+- Nếu không đăng nhập được:
+  - Kiểm tra giá trị `MATKHAU` trong DB (định dạng `pbkdf2$...` và không có ký tự thừa).
+  - Kiểm tra thứ tự cột trả về từ `app.usp_User_GetByUsername`.
+  - Reset `FailedLoginCount` và `LockoutUntil` nếu tài khoản bị khoá.
+  - Kiểm tra file log: `QuanLyNhanVien/bin/Debug/logs/auth.log` để xem trace xác thực.
 
-## Important files
+## Các file quan trọng
 
-- `DAL/Hash256.cs` — PBKDF2 implementation and legacy verification helpers
-- `DAL/DAL_TAIKHOAN.cs` — Authentication, migration, lockout, audit logic
-- `DBScripts/init_security.sql` — core DDL and parameters
-- `DBScripts/StoredProcedures/*` — stored procedure files
-- `tools/generate_password_hash.ps1` — helper to generate pbkdf2 strings for manual DB updates
+- `DAL/Hash256.cs` — PBKDF2 và helper kiểm tra băm cũ
+- `DAL/DAL_TAIKHOAN.cs` — logic xác thực, migrate, khoá, audit
+- `DBScripts/init_security.sql` — DDL cơ bản và tham số
+- `DBScripts/StoredProcedures/*` — các stored procedure
+- `tools/generate_password_hash.ps1` — helper tạo chuỗi pbkdf2 để cập nhật DB
 
-If you want a Vietnamese version of this README or a shorter student-facing README, tell me and I will produce it.
+Nếu bạn cần phiên bản ngắn gọn hơn cho nộp bài hoặc muốn bản tiếng Anh, cho tôi biết.
