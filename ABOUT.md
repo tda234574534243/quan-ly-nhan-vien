@@ -1,73 +1,57 @@
-Project: QUANLYNHANVIEN — Installation & Database Security Notes
+# QUANLYNHANVIEN — Overview
 
-Overview
+This repository contains a personnel-management desktop application (targeting .NET Framework 4.8) with user and role management and several database-side security features.
 
-This repository implements a personnel-management application with user/role management and several database security mechanisms. The codebase includes a .NET Framework 4.8 WinForms/desktop app (DAL layer under DAL/), database deployment scripts (DBScripts/), stored procedures (DBScripts/StoredProcedures/), and small tooling (tools/generate_password_hash.ps1).
+Key parts of the project:
 
-Prerequisites
+- Application code: DAL/ contains data-access logic used by the UI.
+- Database scripts: DBScripts/ contains core DDL and DBScripts/StoredProcedures/ contains individual stored-procedure files (SSDT-friendly).
+- Security utilities: DAL/Hash256.cs implements PBKDF2 hashing and legacy-hash helpers; tools/generate_password_hash.ps1 helps generate pbkdf2 strings for manual DB updates.
 
-- Microsoft Visual Studio (recommended) for .NET Framework 4.8 projects
-- SQL Server instance accessible from the machine (SSMS recommended for manual script runs)
+## Prerequisites
+
+- Visual Studio (for building the .NET Framework 4.8 project)
+- SQL Server instance and SSMS for running deployment scripts
 - .NET Framework 4.8 runtime
-- PowerShell (built-in powershell.exe is sufficient)
+- PowerShell (powershell.exe)
 
-Quick install / setup
+## Quick setup summary
 
-1. Build the app
-   - Open the solution in Visual Studio and build.
+1. Build the solution in Visual Studio.
+2. Create a database (e.g. QUANLYNHANVIEN) and run `DBScripts/init_security.sql` in SSMS to create core tables.
+3. Deploy each `.sql` file under `DBScripts/StoredProcedures/` in SSMS so stored procedures exist individually.
+4. Confirm `app.usp_User_GetByUsername` returns columns in this order: `MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil`.
+5. Configure the app connection string (prefer Windows Authentication or a least-privileged SQL account).
 
-2. Prepare the database
-   - Create a database named QUANLYNHANVIEN (or use an existing DB and update the connection string accordingly).
-   - In SSMS, run DBScripts/init_security.sql to create core tables (AuditLog, PHANLOAITAIKHOAN, TAIKHOAN alterations, THAMSO entries, etc.).
-   - Deploy stored procedures: open each .sql file under DBScripts/StoredProcedures/ and run them in the target database. The project keeps procedures split into one object per file for SSDT compatibility.
-   - Verify app.usp_User_GetByUsername exists and returns columns in this order: MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil
+## Implemented security features
 
-3. Configure connection string
-   - Update the app configuration to point to your SQL Server instance (use integrated security or a least-privileged SQL user). Prefer Windows Authentication where possible.
+- PBKDF2 password hashing (Hash256.CreateHash / Verify). Stored format: `pbkdf2$<iterations>$<saltB64>$<hashB64>`.
+- Legacy-hash migration: DAL migrates plaintext, hex-SHA256, or base64-SHA256 to PBKDF2 on successful login.
+- Account lockout: `FailedLoginCount` and `LockoutUntil` control lockout behavior; parameters TS06/TS07 configurable in `THAMSO`.
+- Audit logging: `dbo.AuditLog` and `dbo.usp_AuditLog_Add` are used by DAL for important events.
+- Parameterized SQL: DAL uses parameterized `SqlCommand` to reduce SQL injection risk.
 
-4. Create test data / admin user
-   - You can create users using the app UI or by inserting test rows.
-   - If the ADMIN account is locked or password needs replacement, run tools/generate_password_hash.ps1 to generate a PBKDF2 value and then run the printed UPDATE in SSMS. Example:
-	 - PowerShell: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate_password_hash.ps1 -password "1" -username "ADMIN"
-	 - Run the generated UPDATE in SSMS and reset FailedLoginCount and LockoutUntil if needed.
+## Recommendations (to reach best practice)
 
-Where the code implements security
+- Use a least-privileged SQL login and grant `EXECUTE` only on necessary stored procedures; deny direct table access.
+- Ensure `MATKHAU` column can store full pbkdf2 strings (use `NVARCHAR(512)` or `VARCHAR(MAX)`).
+- Consider SQL Server features: Always Encrypted, Transparent Data Encryption (TDE), SQL Audit, and Row-Level Security where applicable.
+- Protect connection strings in config (ProtectedConfiguration) and secure log files.
 
-- Password hashing: DAL/Hash256.cs implements PBKDF2 (Rfc2898DeriveBytes) and stores hashes in the format: pbkdf2$<iterations>$<saltB64>$<hashB64>. DAL/DAL_TAIKHOAN.cs verifies and migrates legacy stored formats (plaintext, unsalted hex SHA256, base64 SHA256) to PBKDF2 on successful login.
-- Authentication policies: DAL increments FailedLoginCount and sets LockoutUntil when threshold is reached (THAMSO values TS06/TS07 configurable).
-- Audit logging: dbo.AuditLog table + stored proc dbo.usp_AuditLog_Add; DAL writes audit events for login success/failure, migrations, and user admin actions.
-- Parameterized queries: DAL uses SqlCommand with parameters (reduces SQL injection risk).
-- Stored procedures: User/role management is implemented as stored procedures under DBScripts/StoredProcedures.
-- Runtime tracing: DAL writes an auth log (bin/Debug/logs/auth.log) to assist debugging — protect this file in production.
+## Troubleshooting
 
-Recommendations & additional DB security measures (to reach best-practice)
+- If login fails:
+  - Check the exact `MATKHAU` value and its length in the database.
+  - Ensure the stored procedure `app.usp_User_GetByUsername` returns the expected columns in the expected order.
+  - Reset `FailedLoginCount` and `LockoutUntil` for testing if account is locked.
+- Use `tools/generate_password_hash.ps1` to create a valid PBKDF2 string and update `TAIKHOAN.MATKHAU` if needed.
 
-- Least privilege accounts: create a SQL login used by the app with EXECUTE permission only on stored procedures, and deny direct SELECT/UPDATE/DELETE on tables from that login.
-- GRANT/REVOKE: explicitly grant EXEC on required procs and deny table access; maintain separate roles for admin vs regular operations.
-- Column sizing & types: ensure MATKHAU column can store full PBKDF2 strings (use NVARCHAR(512) or VARCHAR(MAX) as appropriate). Check collation and trimming issues.
-- Always Encrypted / TDE: consider Always Encrypted for client-side sensitive columns or Transparent Data Encryption for data-at-rest.
-- Auditing: enable SQL Server Audit or Extended Events for sensitive actions (logins, privilege changes, DDL changes).
-- Password policies: enforce complexity, rotation, and reuse rules; consider implementing password strength checks at the UI layer.
-- Connection string protection: encrypt connection strings in config (ProtectedConfiguration) and restrict file system access.
-- Secure logging: protect auth.log and other files — store logs centrally and restrict access; avoid logging plaintext passwords.
-- Use Windows Authentication when possible and follow secure service account practices.
-- Monitor and backup: monitor failed login events and lockouts; ensure regular encrypted backups and secure backup storage.
+## Important files
 
-Troubleshooting tips
+- `DAL/Hash256.cs` — PBKDF2 functions and legacy verification helpers
+- `DAL/DAL_TAIKHOAN.cs` — Authentication, migration, lockout, and audit logic
+- `DBScripts/init_security.sql` — core DDL and configuration
+- `DBScripts/StoredProcedures/*` — stored procedure files
+- `tools/generate_password_hash.ps1` — helper to create pbkdf2 strings
 
-- If login fails, verify:
-  - The stored MATKHAU value format (it should be pbkdf2$iterations$salt$hash without extra parentheses).
-  - The stored procedure app.usp_User_GetByUsername returns the expected columns in the expected order.
-  - MATKHAU column length is sufficient and not truncated.
-  - FailedLoginCount and LockoutUntil values (reset if needed for testing).
-- Use the provided tools/generate_password_hash.ps1 to create a valid PBKDF2 string if you need to set an account password directly from SSMS.
-
-Files of interest
-
-- DAL/Hash256.cs — PBKDF2 implementation and legacy hash helpers
-- DAL/DAL_TAIKHOAN.cs — Authentication logic, migration, lockout, audit calls
-- DBScripts/init_security.sql — core DDL for tables and parameters
-- DBScripts/StoredProcedures/* — stored procedure implementations (user/role/audit)
-- tools/generate_password_hash.ps1 — helper to create pbkdf2$ strings for manual DB updates
-
-If you want, I can produce a compact README.md version suitable for the project root and/or generate sample SSMS commands to deploy the DB objects automatically.
+If you want a README.md with installation and step-by-step commands, I can add it to the repository root.

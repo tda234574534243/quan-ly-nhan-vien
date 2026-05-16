@@ -1,60 +1,82 @@
 # QUANLYNHANVIEN
 
-Hệ thống quản lý nhân viên (QuanLyNhanVien) — một ứng dụng WPF (.NET Framework 4.8) để quản lý tài khoản, chấm công, bảng lương, phòng ban và báo cáo.
+A personnel management desktop application (targeting .NET Framework 4.8) that demonstrates user/role management and database security practices.
 
-## Tổng quan
-- Kiến trúc: 3 tầng (DAL, BUS, DTO) + giao diện WPF trong project `QuanLyNhanVien`.
-- Công nghệ: .NET Framework 4.8, WPF, SQL Server, ADO.NET.
-- Các project trong workspace:
-  - `DAL` — Data Access Layer (kết nối DB, truy vấn SQL).
-  - `BUS` — Business logic.
-  - `DTO` — Các đối tượng truyền dữ liệu.
-  - `QuanLyNhanVien` — Giao diện người dùng WPF.
+## Prerequisites
 
-## Tính năng chính
-- Quản lý tài khoản người dùng
-- Đăng nhập/đổi mật khẩu
-- Quản lý nhân viên, phòng ban
-- Chấm công, tính lương
-- Khen thưởng/kỷ luật, báo cáo và xuất Excel
+- Visual Studio (2019/2022/2026) with .NET Framework 4.8 workload
+- SQL Server (LocalDB / Express / Developer / full instance) and SSMS
+- PowerShell (powershell.exe)
 
-## Yêu cầu
-- Windows
-- Visual Studio 2019 hoặc 2022 (hỗ trợ .NET Framework 4.8)
-- SQL Server (có thể là LocalDB hoặc named instance)
-- Quyền truy cập cơ sở dữ liệu `QUANLYNHANVIEN` (schema dự kiến theo project)
+## Installation & Database setup
 
-## Cài đặt và cấu hình
-1. Mở giải pháp trong Visual Studio: `QuanLyNhanVien.sln` (mở thư mục gốc chứa các project).
+1. Clone the repository:
+   ```powershell
+   git clone https://github.com/tda234574534243/quan-ly-nhan-vien.git
+   cd quan-ly-nhan-vien
+   ```
 
-2. Cấu hình chuỗi kết nối SQL Server:
-   - Tạm thời chuỗi kết nối nằm trong `DAL\KetNoi.cs` ở biến `connection`.
-   - Ví dụ (named instance):
-     ```csharp
-     public SqlConnection connection = new SqlConnection(@"Server=DESKTOP-E4P638H\TRANDUCANH;Database=QUANLYNHANVIEN;Integrated Security=True;");
+2. Build the solution
+   - Open the solution in Visual Studio and build (Debug configuration recommended for testing).
+
+3. Create and prepare the database
+   - Create a database named `QUANLYNHANVIEN` (or modify the connection string to a different database).
+   - In SSMS, open and execute `DBScripts/init_security.sql` to create core tables and initial parameters.
+   - Deploy stored procedures: run each `.sql` file in `DBScripts/StoredProcedures/` so they exist as separate objects in the target DB.
+
+4. Verify stored procedure output
+   - Run in SSMS:
+     ```sql
+     EXEC app.usp_User_GetByUsername @TENDANGNHAP = 'ADMIN';
      ```
-   - Lưu ý: nếu dùng verbatim string (`@"..."`) chỉ cần một dấu backslash cho separator instance: `@"Server=HOST\\INSTANCE;..."` là sai — phải `@"Server=HOST\INSTANCE;..."`.
-   - Đề xuất: chuyển chuỗi kết nối vào `App.config` và đọc bằng `ConfigurationManager.ConnectionStrings` để dễ cấu hình.
+   - Confirm the returned columns are in this order:
+     `MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU, FailedLoginCount, LockoutUntil`.
 
-3. Tạo hoặc nhập cơ sở dữ liệu `QUANLYNHANVIEN` trên SQL Server. Nếu repository không kèm file schema, cần cung cấp script tạo bảng/tên cột theo mong đợi trong `DAL`.
+5. Configure the application connection
+   - Update the connection string in the application configuration (App.config) to point to your SQL Server instance. Prefer Windows Authentication in production.
 
-4. Build giải pháp (Debug/Release) trong Visual Studio. Đảm bảo các project tham chiếu đúng nhau.
+6. Create or repair an admin account
+   - Use the app UI to create users, or set a password directly from PowerShell:
+     ```powershell
+     powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/generate_password_hash.ps1 -password "1" -username "ADMIN"
+     ```
+     - Copy the printed `UPDATE` SQL and execute it in SSMS to set the ADMIN password.
+     - If the account is locked, reset counters in SSMS:
+       ```sql
+       UPDATE TAIKHOAN SET FailedLoginCount = 0, LockoutUntil = NULL WHERE TENDANGNHAP = 'ADMIN';
+       ```
 
-5. Chạy project `QuanLyNhanVien` (Set as Startup Project) — ứng dụng WPF sẽ mở form đăng nhập.
+## Implemented security features
 
-## Ghi chú vận hành và khắc phục lỗi phổ biến
-- Lỗi `InvalidOperationException: Instance failure.` thường do chuỗi kết nối sai tên máy/instance; kiểm tra `DAL\KetNoi.cs` hoặc cấu hình trong `App.config`.
-- Lỗi `FormatException: String was not recognized as a valid DateTime.` thường do định dạng ngày không khớp khi gọi `DateTime.ParseExact` — kiểm tra mã nơi sử dụng `ParseExact` và dùng `TryParse`, hoặc tạo `DateTime` từ tháng/năm số nguyên.
-- Nên sử dụng `using` cho `SqlConnection`, `SqlCommand`, `SqlDataReader` và truy vấn tham số (`SqlParameter`) để tránh SQL injection và rò rỉ kết nối.
+- PBKDF2 password hashing (DAL/Hash256.cs) with format: `pbkdf2$<iterations>$<saltB64>$<hashB64>`
+- Legacy-hash migration (plaintext, hex-SHA256, base64-SHA256) to PBKDF2 on successful login
+- Account lockout and failure counters (`FailedLoginCount`, `LockoutUntil`, configurable via `THAMSO`)
+- Audit logging (dbo.AuditLog and dbo.usp_AuditLog_Add)
+- Parameterized SQL usage in DAL to reduce SQL injection risk
 
-## Tổ chức mã nguồn
-- Thêm/điều chỉnh cấu hình chuỗi kết nối: `DAL\KetNoi.cs` (tạm thời) — khuyến nghị di chuyển sang `App.config`.
-- Các lớp xử lý DB: `DAL\DAL_TAIKHOAN.cs`, `DAL\...`.
-- View/ViewModel: trong `QuanLyNhanVien\MVVM`.
+## Recommended hardening
 
-## Đóng góp
-- Mở issue hoặc tạo pull request cho các sửa đổi.
-- Trước khi gửi PR, chạy build toàn bộ solution và test tính năng chính (đăng nhập, CRUD nhân viên, xuất Excel).
+- Use least-privileged SQL accounts: create a DB user that only has `EXECUTE` on stored procedures used by the app.
+- Explicitly GRANT/REVOKE permissions for stored procedures and deny direct table access.
+- Ensure `MATKHAU` column can store full PBKDF2 strings (e.g., `NVARCHAR(512)` or `VARCHAR(MAX)`).
+- Protect configuration files and use encrypted connection strings (ProtectedConfiguration).
+- Consider SQL Server features: Always Encrypted, Transparent Data Encryption (TDE), SQL Audit, and Row-Level Security.
+- Secure logging and avoid storing sensitive data in plain text logs.
 
-## License
-- Chưa chỉ định. Thêm file `LICENSE` nếu cần.
+## Troubleshooting
+
+- If login fails:
+  - Inspect `MATKHAU` in DB for the account and ensure it matches `pbkdf2$...` format without extra parentheses.
+  - Verify `app.usp_User_GetByUsername` columns are returned in the expected order.
+  - Reset `FailedLoginCount` and `LockoutUntil` for testing if the account is locked.
+  - Check `QuanLyNhanVien/bin/Debug/logs/auth.log` for verification traces.
+
+## Important files
+
+- `DAL/Hash256.cs` — PBKDF2 implementation and legacy verification helpers
+- `DAL/DAL_TAIKHOAN.cs` — Authentication, migration, lockout, audit logic
+- `DBScripts/init_security.sql` — core DDL and parameters
+- `DBScripts/StoredProcedures/*` — stored procedure files
+- `tools/generate_password_hash.ps1` — helper to generate pbkdf2 strings for manual DB updates
+
+If you want a Vietnamese version of this README or a shorter student-facing README, tell me and I will produce it.
