@@ -22,68 +22,78 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            Hash256 h = new Hash256();
-            SHA256 sha256Hash = SHA256.Create();
-            string hash = h.GetHash(sha256Hash, tk._MATKHAU);
-            string sql = string.Format("INSERT INTO TAIKHOAN(MALOAITK,TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU) VALUES ('{0}', N'{1}', '{2}','{3}')", tk._MALOAITK, tk._TENCHUTAIKHOAN, tk._TENDANGNHAP, hash);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
+                var h = new Hash256();
+                string salted = h.CreateSaltedHash(tk._MATKHAU);
+
+                string sql = "INSERT INTO TAIKHOAN(MALOAITK,TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU) VALUES (@maloaitk, @tenchu, @tendn, @matkhau)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maloaitk", tk._MALOAITK);
+                    cmd.Parameters.AddWithValue("@tenchu", tk._TENCHUTAIKHOAN ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@tendn", tk._TENDANGNHAP ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@matkhau", salted ?? string.Empty);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
             }
-            else
+            finally
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return false;
+                if (connection.State == ConnectionState.Open)
+                    connection.Close();
             }
-            connection.Close();
         }
 
         public bool SuaTaiKhoan(DTO_TAIKHOAN tk)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            Hash256 h = new Hash256();
-            SHA256 sha256Hash = SHA256.Create();
-            string hash = h.GetHash(sha256Hash, tk._MATKHAU);
-            string sql = string.Format("UPDATE TAIKHOAN SET MALOAITK='{0}', TENCHUTAIKHOAN=N'{1}', TENDANGNHAP='{2}', MATKHAU='{3}' WHERE MATK = '{4}'", tk._MALOAITK, tk._TENCHUTAIKHOAN, tk._TENDANGNHAP, hash, tk._MATK);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
+                var h = new Hash256();
+                string salted = h.CreateSaltedHash(tk._MATKHAU);
 
+                string sql = "UPDATE TAIKHOAN SET MALOAITK=@maloaitk, TENCHUTAIKHOAN=@tenchu, TENDANGNHAP=@tendn, MATKHAU=@matkhau WHERE MATK = @matk";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maloaitk", tk._MALOAITK);
+                    cmd.Parameters.AddWithValue("@tenchu", tk._TENCHUTAIKHOAN ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@tendn", tk._TENDANGNHAP ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@matkhau", salted ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@matk", tk._MATK);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
-            connection.Close();
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                    connection.Close();
+            }
         }
 
-        public bool XoaTaiKhoan(int tenDangNhap)
+        public bool XoaTaiKhoan(int matk)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM TAIKHOAN WHERE TENDANGNHAP = '{0}'", tenDangNhap);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
-
+                string sql = "DELETE FROM TAIKHOAN WHERE MATK = @matk";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@matk", matk);
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
-            connection.Close();
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                    connection.Close();
+            }
         }
 
 
@@ -91,27 +101,80 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            Hash256 h = new Hash256();
-            SHA256 sha256Hash = SHA256.Create();
-            string hash = h.GetHash(sha256Hash, tk._MATKHAU);
-            string sql = string.Format("SELECT * FROM TAIKHOAN WHERE TENDANGNHAP='{0}' AND MATKHAU='{1}'", tk._TENDANGNHAP, hash);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            try
             {
-                tk._TENCHUTAIKHOAN = reader[2].ToString();
-                tk._MALOAITK = Convert.ToInt32(reader[1]);
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
+                string sql = "SELECT MATK, MALOAITK, TENCHUTAIKHOAN, TENDANGNHAP, MATKHAU FROM TAIKHOAN WHERE TENDANGNHAP = @tendn";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@tendn", tk._TENDANGNHAP ?? string.Empty);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            int matk = Convert.ToInt32(reader[0]);
+                            int maloaitk = Convert.ToInt32(reader[1]);
+                            string tenchu = reader[2].ToString();
+                            string stored = reader[4].ToString();
+
+                            var h = new Hash256();
+
+                            // New salted format contains ':' separator
+                            if (stored.Contains(":"))
+                            {
+                                if (h.Verify(tk._MATKHAU, stored))
+                                {
+                                    tk._MATK = matk;
+                                    tk._MALOAITK = maloaitk;
+                                    tk._TENCHUTAIKHOAN = tenchu;
+                                    return true;
+                                }
+                                return false;
+                            }
+
+                            // Legacy unsalted hex SHA256: compute hash and compare
+                            string inputHash;
+                            using (var sha = SHA256.Create())
+                            {
+                                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(tk._MATKHAU ?? string.Empty));
+                                var sb2 = new StringBuilder();
+                                for (int i = 0; i < bytes.Length; i++)
+                                    sb2.Append(bytes[i].ToString("x2"));
+                                inputHash = sb2.ToString();
+                            }
+
+                            if (StringComparer.OrdinalIgnoreCase.Compare(inputHash, stored) == 0)
+                            {
+                                // matched legacy hash; prepare to migrate to salted storage
+                                string newSalted = h.CreateSaltedHash(tk._MATKHAU);
+                                // assign DTO fields
+                                tk._MATK = matk;
+                                tk._MALOAITK = maloaitk;
+                                tk._TENCHUTAIKHOAN = tenchu;
+
+                                // need to update DB to new salted hash after reader is closed
+                                // store migration values in locals and perform update after reader using block
+                                reader.Close();
+
+                                string updSql = "UPDATE TAIKHOAN SET MATKHAU = @matkhau WHERE MATK = @matk";
+                                using (SqlCommand upd = new SqlCommand(updSql, connection))
+                                {
+                                    upd.Parameters.AddWithValue("@matkhau", newSalted ?? string.Empty);
+                                    upd.Parameters.AddWithValue("@matk", matk);
+                                    upd.ExecuteNonQuery();
+                                }
+
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                }
             }
-            else
+            finally
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return false;
+                if (connection.State == ConnectionState.Open)
+                    connection.Close();
             }
-            connection.Close();
         }
 
         public bool KiemTraTonTai(DTO_TAIKHOAN tk)
@@ -158,25 +221,28 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("SELECT * FROM TAIKHOAN WHERE MATK='{0}' ", tk._MATK);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            try
             {
-
-                Hash256 h = new Hash256();
-                SHA256 sha256Hash = SHA256.Create();
-                string hash = h.GetHash(sha256Hash,reader[4].ToString());
-                tk._MATKHAU = hash;
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
-
+                string sql = "SELECT MATKHAU FROM TAIKHOAN WHERE MATK = @matk";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@matk", tk._MATK);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            tk._MATKHAU = reader[0].ToString();
+                            return true;
+                        }
+                        return false;
+                    }
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
-
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                    connection.Close();
+            }
         }
     }
 }

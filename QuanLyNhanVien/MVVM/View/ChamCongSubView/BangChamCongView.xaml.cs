@@ -133,8 +133,18 @@ namespace QuanLyNhanVien.MVVM.View.ChamCongSubView
             }
 
             maNVTbx.Text = row[0].ToString();
-            string selectedMonth = row[2].ToString() + "/" + row[3].ToString();
-            thoiGianDpk.SelectedDate = DateTime.ParseExact(selectedMonth, "MM/yyyy", null);
+            int month = 1, year = DateTime.Now.Year;
+            int.TryParse(row[2]?.ToString(), out month);
+            int.TryParse(row[3]?.ToString(), out year);
+            try
+            {
+                month = Math.Max(1, Math.Min(12, month));
+                thoiGianDpk.SelectedDate = new DateTime(year, month, 1);
+            }
+            catch
+            {
+                thoiGianDpk.SelectedDate = null;
+            }
             khenThuongTbx.Text = row[5].ToString();
             kyLuatTbx.Text = row[6].ToString();
             CheckVaTinhLuong();
