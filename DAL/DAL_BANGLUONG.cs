@@ -20,13 +20,20 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO BANGLUONG VALUES ('{0}', '{1}', '{2}', '{3}', N'{4}')"
-                , bangLuong.Maluong, bangLuong.Lcb, bangLuong.Phucapchucvu, bangLuong.Phucapkhac, bangLuong.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO BANGLUONG(MALUONG, LCB, PHUCAPCHUCVU, PHUCAPKHAC, GHICHU) VALUES(@maluong,@lcb,@pcvc,@pck,@ghichu)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maluong", bangLuong.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@lcb", bangLuong.Lcb);
+                    cmd.Parameters.AddWithValue("@pcvc", bangLuong.Phucapchucvu);
+                    cmd.Parameters.AddWithValue("@pck", bangLuong.Phucapkhac);
+                    cmd.Parameters.AddWithValue("@ghichu", bangLuong.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
     MALUONG VARCHAR(8) PRIMARY KEY,
@@ -39,39 +46,45 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE BANGLUONG " +
-                "SET LCB='{0}',PHUCAPCHUCVU='{1}',PHUCAPKHAC='{2}',GHICHU=N'{3}'" + "WHERE MALUONG = '{4}'",
-            bangLuong.Lcb, bangLuong.Phucapchucvu, bangLuong.Phucapkhac, bangLuong.Ghichu, bangLuong.Maluong);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "UPDATE BANGLUONG SET LCB=@lcb, PHUCAPCHUCVU=@pcvc, PHUCAPKHAC=@pck, GHICHU=@ghichu WHERE MALUONG=@maluong";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@lcb", bangLuong.Lcb);
+                    cmd.Parameters.AddWithValue("@pcvc", bangLuong.Phucapchucvu);
+                    cmd.Parameters.AddWithValue("@pck", bangLuong.Phucapkhac);
+                    cmd.Parameters.AddWithValue("@ghichu", bangLuong.Ghichu ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluong", bangLuong.Maluong ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaBangLuong(string maluong)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM BANGLUONG WHERE MALUONG = '{0}'", maluong);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM BANGLUONG WHERE MALUONG = @maluong", connection))
+                {
+                    cmd.Parameters.AddWithValue("@maluong", maluong ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public List<string> TongHopMaLuong()
         {
             List<string> listMaLuong = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT MALUONG FROM BANGLUONG");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MALUONG FROM BANGLUONG", connection))
+            using (SqlDataReader sdr = cmd.ExecuteReader())
             {
-                listMaLuong.Add(sdr[0].ToString());
+                while (sdr.Read()) listMaLuong.Add(sdr[0].ToString());
             }
             connection.Close();
             return listMaLuong;
@@ -80,27 +93,26 @@ namespace DAL
         public DTO_BANGLUONG GetChiTietLuong(string maluong)
         {
             DTO_BANGLUONG dtoBangLuong = new DTO_BANGLUONG();
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT * FROM BANGLUONG WHERE MALUONG='{0}'", maluong);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                dtoBangLuong.Maluong = maluong;
-                dtoBangLuong.Lcb = Convert.ToDouble(reader[1].ToString());
-                dtoBangLuong.Phucapchucvu = Convert.ToDouble(reader[2].ToString());
-                dtoBangLuong.Phucapkhac = Convert.ToDouble(reader[3].ToString());
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangLuong;
+                using (SqlCommand cmd = new SqlCommand("SELECT MALUONG, LCB, PHUCAPCHUCVU, PHUCAPKHAC FROM BANGLUONG WHERE MALUONG=@maluong", connection))
+                {
+                    cmd.Parameters.AddWithValue("@maluong", maluong ?? string.Empty);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            dtoBangLuong.Maluong = maluong;
+                            dtoBangLuong.Lcb = Convert.ToDouble(reader[1].ToString());
+                            dtoBangLuong.Phucapchucvu = Convert.ToDouble(reader[2].ToString());
+                            dtoBangLuong.Phucapkhac = Convert.ToDouble(reader[3].ToString());
+                        }
+                        return dtoBangLuong;
+                    }
+                }
             }
-            else
-            {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangLuong;
-            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
     }
 }

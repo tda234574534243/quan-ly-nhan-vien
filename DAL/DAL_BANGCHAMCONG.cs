@@ -14,7 +14,8 @@ namespace DAL
 
         public DataTable getBangChamCong()
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT BANGCHAMCONG.MANV 'Mã nhân viên', HOTEN 'Họ tên', THANG 'Tháng', NAM 'Năm', BANGCHAMCONG.MALUONG 'Mã lương', TIENKHENTHUONG 'Tiền khen thưởng', TIENKYLUAT 'Tiền kỷ luật', SONGAYCONG 'Số ngày công', SONGAYNGHI 'Số ngày nghỉ', SOGIOLAMTHEM 'Số giờ làm thêm', BANGCHAMCONG.GHICHU 'Ghi chú' FROM BANGCHAMCONG, NHANVIEN WHERE BANGCHAMCONG.MANV = NHANVIEN.MANV", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_BangChamCong_GetAll", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dtBANGCHAMCONG = new DataTable();
             da.Fill(dtBANGCHAMCONG);
             return dtBANGCHAMCONG;
@@ -22,7 +23,8 @@ namespace DAL
 
         public DataTable xuatBangChamCong()
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM BANGCHAMCONG, NHANVIEN WHERE BANGCHAMCONG.MANV = NHANVIEN.MANV", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_BangChamCong_GetAll", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dtBANGCHAMCONG = new DataTable();
             da.Fill(dtBANGCHAMCONG);
             return dtBANGCHAMCONG;
@@ -32,16 +34,25 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO BANGCHAMCONG VALUES " +
-                "('{0}', '{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}',N'{9}')"
-                , bangChamCong.Manv, bangChamCong.Thang, bangChamCong.Nam, 
-                bangChamCong.Maluong, bangChamCong.Tienkhenthuong, bangChamCong.Tienkyluat,
-                bangChamCong.Songaycong,bangChamCong.Songaynghi,bangChamCong.Sogiolamthem,bangChamCong.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_Insert", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", bangChamCong.Manv);
+                    cmd.Parameters.AddWithValue("@THANG", bangChamCong.Thang);
+                    cmd.Parameters.AddWithValue("@NAM", bangChamCong.Nam);
+                    cmd.Parameters.AddWithValue("@MALUONG", bangChamCong.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@TIENKHENTHUONG", bangChamCong.Tienkhenthuong);
+                    cmd.Parameters.AddWithValue("@TIENKYLUAT", bangChamCong.Tienkyluat);
+                    cmd.Parameters.AddWithValue("@SONGAYCONG", bangChamCong.Songaycong);
+                    cmd.Parameters.AddWithValue("@SONGAYNGHI", bangChamCong.Songaynghi);
+                    cmd.Parameters.AddWithValue("@SOGIOLAMTHEM", bangChamCong.Sogiolamthem);
+                    cmd.Parameters.AddWithValue("@GHICHU", bangChamCong.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MANV INT,
@@ -58,57 +69,71 @@ namespace DAL
  */
         public bool SuaBangChamCong(DTO_BANGCHAMCONG bangChamCong)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("UPDATE BANGCHAMCONG " +
-                "SET MALUONG='{0}', TIENKHENTHUONG='{1}',TIENKYLUAT='{2}',SONGAYCONG='{3}'" +
-               ",SONGAYNGHI='{4}',SOGIOLAMTHEM='{5}',GHICHU=N'{6}' " + "WHERE MANV = '{7}' AND THANG ='{8}' AND NAM ='{9}'",
-               bangChamCong.Maluong, bangChamCong.Tienkhenthuong, bangChamCong.Tienkyluat,
-                bangChamCong.Songaycong, bangChamCong.Songaynghi, bangChamCong.Sogiolamthem, bangChamCong.Ghichu, bangChamCong.Manv, bangChamCong.Thang, bangChamCong.Nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_Update", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", bangChamCong.Manv);
+                    cmd.Parameters.AddWithValue("@THANG", bangChamCong.Thang);
+                    cmd.Parameters.AddWithValue("@NAM", bangChamCong.Nam);
+                    cmd.Parameters.AddWithValue("@MALUONG", bangChamCong.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@TIENKHENTHUONG", bangChamCong.Tienkhenthuong);
+                    cmd.Parameters.AddWithValue("@TIENKYLUAT", bangChamCong.Tienkyluat);
+                    cmd.Parameters.AddWithValue("@SONGAYCONG", bangChamCong.Songaycong);
+                    cmd.Parameters.AddWithValue("@SONGAYNGHI", bangChamCong.Songaynghi);
+                    cmd.Parameters.AddWithValue("@SOGIOLAMTHEM", bangChamCong.Sogiolamthem);
+                    cmd.Parameters.AddWithValue("@GHICHU", bangChamCong.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaBangChamCong(int manv,int thang,int nam)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM BANGCHAMCONG WHERE MANV = '{0}' AND THANG ='{1}' AND NAM ='{2}'", manv,thang,nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_Delete", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", manv);
+                    cmd.Parameters.AddWithValue("@THANG", thang);
+                    cmd.Parameters.AddWithValue("@NAM", nam);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public DTO_BANGCHAMCONG getBangChamCongTheoNhanVien(string maNV, int thang, int nam)
         {
             DTO_BANGCHAMCONG dtoBangChamCong = new DTO_BANGCHAMCONG();
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT SONGAYCONG, SONGAYNGHI, SOGIOLAMTHEM FROM BANGCHAMCONG"+
-                " WHERE MANV='{0}' AND THANG='{1}' AND NAM ='{2}'", maNV, thang, nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                dtoBangChamCong.Songaycong = Convert.ToInt32(reader[0].ToString());
-                dtoBangChamCong.Songaynghi = Convert.ToInt32(reader[1].ToString());
-                dtoBangChamCong.Sogiolamthem = Convert.ToInt32(reader[2].ToString());
-
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangChamCong;
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_GetByManvMonthYear", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", maNV);
+                    cmd.Parameters.AddWithValue("@THANG", thang);
+                    cmd.Parameters.AddWithValue("@NAM", nam);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            dtoBangChamCong.Songaycong = reader.IsDBNull(0) ? 0 : Convert.ToInt32(reader[0].ToString());
+                            dtoBangChamCong.Songaynghi = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader[1].ToString());
+                            dtoBangChamCong.Sogiolamthem = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader[2].ToString());
+                        }
+                        return dtoBangChamCong;
+                    }
+                }
             }
-            else
-            {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangChamCong;
-            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public DataTable getBangChiTietChamCongTheoNhanVien(string maNV, string thang, string nam)
@@ -116,16 +141,20 @@ namespace DAL
             DataTable dtBANGCHAMCONG = new DataTable();
             if (thang == "" && nam == "")
             {
-                SqlDataAdapter da = new SqlDataAdapter("SELECT LUONG 'Lương', BANGCHAMCONG.THANG 'Tháng', BANGCHAMCONG.NAM 'Năm', BANGCHAMCONG.MALUONG 'Mã lương', TIENKHENTHUONG 'Tiền khen thưởng', TIENKYLUAT 'Tiền kỷ luật', SONGAYCONG 'Số ngày công', SONGAYNGHI 'Số ngày nghỉ', SOGIOLAMTHEM 'Số giờ làm thêm', BANGCHAMCONG.GHICHU 'Ghi chú' FROM BANGCHAMCONG, BANGTINHLUONG "
-                + "WHERE BANGCHAMCONG.MANV = '" + maNV + "' AND BANGTINHLUONG.MANV = '" + maNV + "'", connection);
-                //DataTable dtBANGCHAMCONG = new DataTable();
+                var da = new SqlDataAdapter("dbo.usp_BangChamCong_GetByManvMonthYear", connection);
+                da.SelectCommand.CommandType = CommandType.StoredProcedure;
+                da.SelectCommand.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                da.SelectCommand.Parameters.AddWithValue("@THANG", DBNull.Value);
+                da.SelectCommand.Parameters.AddWithValue("@NAM", DBNull.Value);
                 da.Fill(dtBANGCHAMCONG);
             }
             else
             {
-                SqlDataAdapter da = new SqlDataAdapter("SELECT LUONG 'Lương', BANGCHAMCONG.THANG 'Tháng', BANGCHAMCONG.NAM 'Năm', BANGCHAMCONG.MALUONG 'Mã lương', TIENKHENTHUONG 'Tiền khen thưởng', TIENKYLUAT 'Tiền kỷ luật', SONGAYCONG 'Số ngày công', SONGAYNGHI 'Số ngày nghỉ', SOGIOLAMTHEM 'Số giờ làm thêm', BANGCHAMCONG.GHICHU 'Ghi chú' FROM BANGCHAMCONG, BANGTINHLUONG "
-                + "WHERE BANGCHAMCONG.MANV = '" + maNV + "' AND BANGCHAMCONG.THANG = '" + thang + "' AND BANGCHAMCONG.NAM = '" + nam + "'AND BANGTINHLUONG.MANV = '" + maNV + "' AND BANGTINHLUONG.THANG = '" + thang + "' AND BANGTINHLUONG.NAM = '" + nam + "'", connection);
-                //DataTable dtBANGCHAMCONG = new DataTable();
+                var da = new SqlDataAdapter("dbo.usp_BangChamCong_GetByManvMonthYear", connection);
+                da.SelectCommand.CommandType = CommandType.StoredProcedure;
+                da.SelectCommand.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                da.SelectCommand.Parameters.AddWithValue("@THANG", string.IsNullOrEmpty(thang) ? (object)DBNull.Value : (object)thang);
+                da.SelectCommand.Parameters.AddWithValue("@NAM", string.IsNullOrEmpty(nam) ? (object)DBNull.Value : (object)nam);
                 da.Fill(dtBANGCHAMCONG);
             }
             return dtBANGCHAMCONG;
@@ -134,46 +163,52 @@ namespace DAL
         public DTO_BANGCHAMCONG getBangChamCongNhanVienTheoThang(string maNV, int thang, int nam)
         {
             DTO_BANGCHAMCONG dtoBangChamCong = new DTO_BANGCHAMCONG();
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT LUONG 'Lương', BANGCHAMCONG.THANG 'Tháng', BANGCHAMCONG.NAM 'Năm', BANGCHAMCONG.MALUONG 'Mã lương', TIENKHENTHUONG 'Tiền khen thưởng', TIENKYLUAT 'Tiền kỷ luật', SONGAYCONG 'Số ngày công', SONGAYNGHI 'Số ngày nghỉ', SOGIOLAMTHEM 'Số giờ làm thêm' FROM BANGCHAMCONG, BANGTINHLUONG "
-                + "WHERE BANGCHAMCONG.MANV = '" + maNV + "' AND BANGCHAMCONG.THANG = '" + thang + "' AND BANGCHAMCONG.NAM = '" + nam + "' AND BANGTINHLUONG.MANV = '" + maNV + "' AND BANGTINHLUONG.THANG = '" + thang + "' AND BANGTINHLUONG.NAM = '" + nam + "'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                dtoBangChamCong.Thang = Convert.ToInt32(reader[1].ToString());
-                dtoBangChamCong.Nam = Convert.ToInt32(reader[2].ToString());
-                dtoBangChamCong.Maluong = reader[3].ToString();
-                dtoBangChamCong.Tienkhenthuong = double.Parse(reader[4].ToString());
-                dtoBangChamCong.Tienkyluat = double.Parse(reader[5].ToString());
-                dtoBangChamCong.Songaycong = int.Parse(reader[6].ToString());
-                dtoBangChamCong.Songaynghi = int.Parse(reader[7].ToString());
-                dtoBangChamCong.Sogiolamthem = int.Parse(reader[8].ToString());
-
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangChamCong;
+                using (SqlCommand cmd = new SqlCommand("SELECT LUONG, BANGCHAMCONG.THANG, BANGCHAMCONG.NAM, BANGCHAMCONG.MALUONG, TIENKHENTHUONG, TIENKYLUAT, SONGAYCONG, SONGAYNGHI, SOGIOLAMTHEM FROM BANGCHAMCONG JOIN BANGTINHLUONG ON BANGCHAMCONG.MANV = BANGTINHLUONG.MANV AND BANGCHAMCONG.THANG = BANGTINHLUONG.THANG AND BANGCHAMCONG.NAM = BANGTINHLUONG.NAM WHERE BANGCHAMCONG.MANV = @manv AND BANGCHAMCONG.THANG = @thang AND BANGCHAMCONG.NAM = @nam", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", maNV ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@thang", thang);
+                    cmd.Parameters.AddWithValue("@nam", nam);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            dtoBangChamCong.Thang = Convert.ToInt32(reader[1].ToString());
+                            dtoBangChamCong.Nam = Convert.ToInt32(reader[2].ToString());
+                            dtoBangChamCong.Maluong = reader[3].ToString();
+                            dtoBangChamCong.Tienkhenthuong = double.Parse(reader[4].ToString());
+                            dtoBangChamCong.Tienkyluat = double.Parse(reader[5].ToString());
+                            dtoBangChamCong.Songaycong = int.Parse(reader[6].ToString());
+                            dtoBangChamCong.Songaynghi = int.Parse(reader[7].ToString());
+                            dtoBangChamCong.Sogiolamthem = int.Parse(reader[8].ToString());
+                        }
+                        return dtoBangChamCong;
+                    }
+                }
             }
-            else
-            {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoBangChamCong;
-            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public string GetMaLuongTheoThang(string maNV, string thang, string nam)
         {
             string maLuong = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT MALUONG FROM BANGCHAMCONG WHERE MANV = '{0}' AND THANG= '{1}' AND NAM= '{2}'", maNV, thang, nam);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_GetByManvMonthYear", connection))
             {
-                maLuong = sdr["MALUONG"].ToString();
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                cmd.Parameters.AddWithValue("@THANG", string.IsNullOrEmpty(thang) ? (object)DBNull.Value : (object)thang);
+                cmd.Parameters.AddWithValue("@NAM", string.IsNullOrEmpty(nam) ? (object)DBNull.Value : (object)nam);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read())
+                    {
+                        if (!sdr.IsDBNull(sdr.GetOrdinal("MALUONG")))
+                            maLuong = sdr["MALUONG"].ToString();
+                    }
+                }
             }
             connection.Close();
             return maLuong;
@@ -181,50 +216,56 @@ namespace DAL
 
         public bool KiemTraTonTai(string maNV, string thang, string nam)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT * FROM BANGCHAMCONG WHERE MANV='{0}' AND THANG='{1}' AND NAM='{2}' ", maNV, thang,nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_GetByManvMonthYear", connection))
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                cmd.Parameters.AddWithValue("@THANG", string.IsNullOrEmpty(thang) ? (object)DBNull.Value : (object)thang);
+                cmd.Parameters.AddWithValue("@NAM", string.IsNullOrEmpty(nam) ? (object)DBNull.Value : (object)nam);
+                using (SqlDataReader r = cmd.ExecuteReader())
+                {
+                    return r.Read();
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
         }
 
         public bool KiemTraTonTaiNhanVien(string maNV)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT * FROM BANGCHAMCONG WHERE MANV='{0}'", maNV);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_GetByManvMonthYear", connection))
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                cmd.Parameters.AddWithValue("@THANG", DBNull.Value);
+                cmd.Parameters.AddWithValue("@NAM", DBNull.Value);
+                using (SqlDataReader r = cmd.ExecuteReader())
+                {
+                    return r.Read();
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
         }
 
         public bool SuaGhiChu(string ghiChu, string maNV)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE BANGCHAMCONG " +
-                "SET GHICHU=N'{0}' WHERE MANV = '{1}'", ghiChu, maNV);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_BangChamCong_Update", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                // only update GHICHU field
+                cmd.Parameters.AddWithValue("@MANV", maNV ?? string.Empty);
+                cmd.Parameters.AddWithValue("@THANG", 0);
+                cmd.Parameters.AddWithValue("@NAM", 0);
+                cmd.Parameters.AddWithValue("@MALUONG", string.Empty);
+                cmd.Parameters.AddWithValue("@TIENKHENTHUONG", 0);
+                cmd.Parameters.AddWithValue("@TIENKYLUAT", 0);
+                cmd.Parameters.AddWithValue("@SONGAYCONG", 0);
+                cmd.Parameters.AddWithValue("@SONGAYNGHI", 0);
+                cmd.Parameters.AddWithValue("@SOGIOLAMTHEM", 0);
+                cmd.Parameters.AddWithValue("@GHICHU", ghiChu ?? string.Empty);
+                return cmd.ExecuteNonQuery() > 0;
+            }
             connection.Close();
         }
     }

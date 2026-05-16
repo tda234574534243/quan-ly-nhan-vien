@@ -17,7 +17,9 @@ namespace DAL
 	GHICHU NVARCHAR(50)*/
         public DataTable getBaoCaoLuong()
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM BAOCAOLUONG", connection);
+            SqlCommand cmd = new SqlCommand("dbo.usp_BaoCaoLuong_GetAll", connection);
+            cmd.CommandType = CommandType.StoredProcedure;
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
             DataTable dtBAOCAOLUONG = new DataTable();
             da.Fill(dtBAOCAOLUONG);
             return dtBAOCAOLUONG;
@@ -26,38 +28,51 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO BAOCAOLUONG VALUES ('{0}','{1}',N'{2}')"
-                , baoCaoLuong.Thang, baoCaoLuong.Nam, baoCaoLuong.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BaoCaoLuong_Insert", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@THANG", baoCaoLuong.Thang);
+                    cmd.Parameters.AddWithValue("@NAM", baoCaoLuong.Nam);
+                    cmd.Parameters.AddWithValue("@GHICHU", baoCaoLuong.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         public bool SuaBaoCaoLuong(DTO_BAOCAOLUONG baoCaoLuong)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE BAOCAOLUONG " +
-                "SET GHICHU=N'{0}'" + "WHERE THANG = '{1}' AND NAM = '{2}' ",
-            baoCaoLuong.Ghichu, baoCaoLuong.Thang, baoCaoLuong.Nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BaoCaoLuong_Update", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@THANG", baoCaoLuong.Thang);
+                    cmd.Parameters.AddWithValue("@NAM", baoCaoLuong.Nam);
+                    cmd.Parameters.AddWithValue("@GHICHU", baoCaoLuong.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaBaoCaoLuong(int thang, int nam)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("DELETE FROM BAOCAOLUONG WHERE THANG = '{0}' AND NAM = '{1}'", thang,nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                if (connection.State != ConnectionState.Open) connection.Open();
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_BaoCaoLuong_Delete", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@THANG", thang);
+                    cmd.Parameters.AddWithValue("@NAM", nam);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
     }
 }

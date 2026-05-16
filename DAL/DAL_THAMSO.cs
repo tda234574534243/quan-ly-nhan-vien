@@ -24,112 +24,107 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE THAMSO SET  GIATRI='{0}' WHERE MATHAMSO= '{1}'", ts.Giatri,ts.Mats);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
-
+                string sql = "UPDATE THAMSO SET GIATRI = @giatri WHERE MATHAMSO = @mathamso";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@giatri", ts.Giatri);
+                    cmd.Parameters.AddWithValue("@mathamso", ts.Mats ?? string.Empty);
+                    int rows = cmd.ExecuteNonQuery();
+                    if (rows > 0)
+                    {
+                        // audit
+                        using (SqlCommand a = new SqlCommand("EXEC dbo.usp_AuditLog_Add @EventType, @Username, @Target, @Details", connection))
+                        {
+                            a.Parameters.AddWithValue("@EventType", "ParamUpdate");
+                            a.Parameters.AddWithValue("@Username", string.Empty);
+                            a.Parameters.AddWithValue("@Target", ts.Mats ?? string.Empty);
+                            a.Parameters.AddWithValue("@Details", "Parameter updated");
+                            a.ExecuteNonQuery();
+                        }
+                    }
+                    return rows > 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
-            connection.Close();
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public double Get_soNgayNghiToiDa()
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            double soNgayNghiToiDa = 0;
-            string sql = string.Format("SELECT GIATRI FROM THAMSO WHERE MATHAMSO= 'TS01'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                soNgayNghiToiDa = Convert.ToDouble(reader[0].ToString());
-
+                using (SqlCommand cmd = new SqlCommand("SELECT GIATRI FROM THAMSO WHERE MATHAMSO = @m", connection))
+                {
+                    cmd.Parameters.AddWithValue("@m", "TS01");
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) return Convert.ToDouble(res);
+                    return 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return soNgayNghiToiDa;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         public double Get_soNgayLamToiDa()
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            double soNgayLamToiDa = 0;
-            string sql = string.Format("SELECT GIATRI FROM THAMSO WHERE MATHAMSO= 'TS02'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                soNgayLamToiDa = Convert.ToDouble(reader[0].ToString());
-
+                using (SqlCommand cmd = new SqlCommand("SELECT GIATRI FROM THAMSO WHERE MATHAMSO = @m", connection))
+                {
+                    cmd.Parameters.AddWithValue("@m", "TS02");
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) return Convert.ToDouble(res);
+                    return 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return soNgayLamToiDa;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         public double Get_tienLamthem()
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            double tienLamThem = 0;
-            string sql = string.Format("SELECT GIATRI FROM THAMSO WHERE MATHAMSO= 'TS03'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                tienLamThem = Convert.ToDouble(reader[0].ToString());
-
+                using (SqlCommand cmd = new SqlCommand("SELECT GIATRI FROM THAMSO WHERE MATHAMSO = @m", connection))
+                {
+                    cmd.Parameters.AddWithValue("@m", "TS03");
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) return Convert.ToDouble(res);
+                    return 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return tienLamThem;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         public double Get_tiLePhat()
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            double tiLePhat = 0;
-            string sql = string.Format("SELECT GIATRI FROM THAMSO WHERE MATHAMSO= 'TS04'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                tiLePhat = Convert.ToDouble(reader[0].ToString());
-
+                using (SqlCommand cmd = new SqlCommand("SELECT GIATRI FROM THAMSO WHERE MATHAMSO = @m", connection))
+                {
+                    cmd.Parameters.AddWithValue("@m", "TS04");
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) return Convert.ToDouble(res);
+                    return 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return tiLePhat;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public double Get_soThangNghiSinh()
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            double soThangNghiSinh = 0;
-            string sql = string.Format("SELECT GIATRI FROM THAMSO WHERE MATHAMSO= 'TS05'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                soThangNghiSinh = Convert.ToDouble(reader[0].ToString());
-
+                using (SqlCommand cmd = new SqlCommand("SELECT GIATRI FROM THAMSO WHERE MATHAMSO = @m", connection))
+                {
+                    cmd.Parameters.AddWithValue("@m", "TS05");
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) return Convert.ToDouble(res);
+                    return 0;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return soThangNghiSinh;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
     }

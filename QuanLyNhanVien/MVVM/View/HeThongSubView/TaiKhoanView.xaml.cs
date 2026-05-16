@@ -51,10 +51,10 @@ namespace QuanLyNhanVien.MVVM.View.HeThongSubView
             }
 
             dtoTaiKhoan._MATK = Convert.ToInt32(row[0].ToString());
-            busTaiKhoan.LayMatKhau(dtoTaiKhoan);
             maNVCbx.Text = row[3].ToString();
             tenChuTaiKhoanTbx.Text = row[2].ToString();
-            matKhauTbx.Text = row[4].ToString();
+            // Do not populate password field with stored hash for security
+            matKhauTbx.Text = string.Empty;
         }
 
         public void ClearBoxes()

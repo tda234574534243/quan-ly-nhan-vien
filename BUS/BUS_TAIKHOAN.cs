@@ -43,7 +43,8 @@ namespace BUS
 
         public bool LayMatKhau(DTO_TAIKHOAN tk)
         {
-            return taikhoan.LayMatKhau(tk);
+            // Deprecated: do not expose password hashes. Keep for compatibility.
+            return false;
         }
     }
 }

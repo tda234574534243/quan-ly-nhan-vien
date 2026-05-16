@@ -22,13 +22,18 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO KHENTHUONG VALUES ('{0}', N'{1}')"
-                , khenThuong.Tien, khenThuong.Lydo);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO KHENTHUONG(TIEN, LYDO) VALUES(@tien, @lydo)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@tien", khenThuong.Tien);
+                    cmd.Parameters.AddWithValue("@lydo", khenThuong.Lydo ?? string.Empty);
+                    int rows = cmd.ExecuteNonQuery();
+                    return rows > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MAKL INT PRIMARY KEY,
@@ -39,38 +44,43 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE KHENTHUONG " +
-                "SET TIEN='{0}', LYDO=N'{1}'" + "WHERE MAKT = '{2}'", khenThuong.Tien, khenThuong.Lydo, khenThuong.Makt);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "UPDATE KHENTHUONG SET TIEN=@tien, LYDO=@lydo WHERE MAKT=@makt";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@tien", khenThuong.Tien);
+                    cmd.Parameters.AddWithValue("@lydo", khenThuong.Lydo ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@makt", khenThuong.Makt);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaKhenThuong(int makt)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM KHENTHUONG WHERE MAKT = '{0}'", makt);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM KHENTHUONG WHERE MAKT = @makt", connection))
+                {
+                    cmd.Parameters.AddWithValue("@makt", makt);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public List<string> TongHopMaKhenThuong()
         {
             List<string> listMaKhenThuong = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT MAKT FROM KHENTHUONG");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MAKT FROM KHENTHUONG", connection))
+            using (SqlDataReader sdr = cmd.ExecuteReader())
             {
-                listMaKhenThuong.Add(sdr[0].ToString());
+                while (sdr.Read()) listMaKhenThuong.Add(sdr[0].ToString());
             }
             connection.Close();
             return listMaKhenThuong;

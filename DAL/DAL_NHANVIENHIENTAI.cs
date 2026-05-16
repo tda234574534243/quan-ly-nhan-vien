@@ -17,13 +17,10 @@ namespace DAL
         {
             string maNV = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT MANV FROM NHANVIENHIENTAI", maNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MANV FROM NHANVIENHIENTAI", connection))
+            using (SqlDataReader sdr = cmd.ExecuteReader())
             {
-                maNV = sdr["MANV"].ToString();
+                while (sdr.Read()) maNV = sdr["MANV"].ToString();
             }
             connection.Close();
             return maNV;
@@ -33,13 +30,15 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO NHANVIENHIENTAI VALUES ('{0}')"
-                , nhanVienHienTai.Manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("INSERT INTO NHANVIENHIENTAI(MANV) VALUES(@manv)", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", nhanVienHienTai.Manv);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
     MABP VARCHAR(8) PRIMARY KEY,
@@ -65,12 +64,14 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM NHANVIENHIENTAI");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM NHANVIENHIENTAI", connection))
+                {
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         //public bool KiemTraTonTai(string maNV)

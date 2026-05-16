@@ -22,13 +22,20 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO THAYDOIBANGLUONG VALUES ('{0}', '{1}','{2}','{3}',N'{4}')"
-                , tdbl.Manv, tdbl.Maluong, tdbl.Maluongmoi, tdbl.Ngaysua,tdbl.Lydo);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO THAYDOIBANGLUONG(MANV, MALUONG, MALUONGMOI, NGAYSUA, LYDO) VALUES(@manv,@maluong,@maluongmoi,@ngaysua,@lydo)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", tdbl.Manv);
+                    cmd.Parameters.AddWithValue("@maluong", tdbl.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluongmoi", tdbl.Maluongmoi ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@ngaysua", (object)tdbl.Ngaysua ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@lydo", tdbl.Lydo ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MANV INT,
@@ -42,87 +49,86 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE THAYDOIBANGLUONG " +
-                "SET NGAYSUA='{0}', LYDO=N'{1}' " + "WHERE MANV = '{2}' AND MALUONG='{3}' AND MALUONGMOI='{4}' ",
-            tdbl.Ngaysua, tdbl.Lydo,tdbl.Manv, tdbl.Maluong, tdbl.Maluongmoi);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "UPDATE THAYDOIBANGLUONG SET NGAYSUA=@ngaysua, LYDO=@lydo WHERE MANV=@manv AND MALUONG=@maluong AND MALUONGMOI=@maluongmoi";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@ngaysua", (object)tdbl.Ngaysua ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@lydo", tdbl.Lydo ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@manv", tdbl.Manv);
+                    cmd.Parameters.AddWithValue("@maluong", tdbl.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluongmoi", tdbl.Maluongmoi ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaThayDoiBangLuong(int manv,string maluong,string maluongmoi)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("DELETE FROM THAYDOIBANGLUONG WHERE MANV = '{0}' AND MALUONG='{1}' AND MALUONGMOI='{2}'", manv,maluong,maluongmoi);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM THAYDOIBANGLUONG WHERE MANV = @manv AND MALUONG=@maluong AND MALUONGMOI=@maluongmoi", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", manv);
+                    cmd.Parameters.AddWithValue("@maluong", maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluongmoi", maluongmoi ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaThayDoiBangLuongCuaNhanVien(int manv)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("DELETE FROM THAYDOIBANGLUONG WHERE MANV = '{0}'", manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM THAYDOIBANGLUONG WHERE MANV = @manv", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", manv);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool KiemTraTonTaiThayDoiBangLuong(string maNV, string maLuong, string maLuongMoi)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT * FROM THAYDOIBANGLUONG " +
-                "WHERE MANV = '{0}' AND MALUONG='{1}' AND MALUONGMOI='{2}' ",
-            maNV, maLuong, maLuongMoi);
-            
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
-
+                using (SqlCommand cmd = new SqlCommand("SELECT 1 FROM THAYDOIBANGLUONG WHERE MANV=@manv AND MALUONG=@maluong AND MALUONGMOI=@maluongmoi", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", maNV ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluong", maLuong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maluongmoi", maLuongMoi ?? string.Empty);
+                    var res = cmd.ExecuteScalar();
+                    return res != null;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool KiemTraTonTaiThayDoiBangLuongTheoNhanVien(string maNV)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("SELECT * FROM THAYDOIBANGLUONG " +
-                "WHERE MANV = '{0}'",
-            maNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return true;
-
+                using (SqlCommand cmd = new SqlCommand("SELECT 1 FROM THAYDOIBANGLUONG WHERE MANV = @manv", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", maNV ?? string.Empty);
+                    var res = cmd.ExecuteScalar();
+                    return res != null;
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            return false;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public DataTable getThayDoiBangLuongCaNhan(string manv)
         { 
-            SqlDataAdapter da = new SqlDataAdapter("SELECT MANV 'Mã nhân viên', MALUONG 'Mã lương cũ', MALUONGMOI 'Mã lương mới', FORMAT(NGAYSUA, 'MM/dd/yyyy') 'Ngày sửa', LYDO 'Lý do' FROM THAYDOIBANGLUONG WHERE MANV = N'" + manv + "'", connection);
+            SqlDataAdapter da = new SqlDataAdapter("SELECT MANV 'Mã nhân viên', MALUONG 'Mã lương cũ', MALUONGMOI 'Mã lương mới', FORMAT(NGAYSUA, 'MM/dd/yyyy') 'Ngày sửa', LYDO 'Lý do' FROM THAYDOIBANGLUONG WHERE MANV = @manv", connection);
+            da.SelectCommand.Parameters.AddWithValue("@manv", manv ?? string.Empty);
             DataTable dtBANGLUONGCANHAN = new DataTable();
             da.Fill(dtBANGLUONGCANHAN);
             return dtBANGLUONGCANHAN;
@@ -140,13 +146,15 @@ namespace DAL
             else ngayDauThangsau = "01/" + (int.Parse(thang + 1)).ToString() + "/" + (int.Parse(nam + 1)).ToString();
 
             CheckConnection();
-            string sql = string.Format("SELECT TOP 1 NGAYSUA, MALUONG FROM THAYDOIBANGLUONG WHERE MANV = '{0}' AND NGAYSUA < '{1}' AND NGAYSUA >= '{3}' ORDER BY NGAYSUA DESC", maNV, ngayDauCuaThang, ngayDauThangsau);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 MALUONG FROM THAYDOIBANGLUONG WHERE MANV = @manv AND NGAYSUA < @ngaydau AND NGAYSUA >= @ngaydau2 ORDER BY NGAYSUA DESC", connection))
             {
-                maLuong = sdr["MALUONG"].ToString();
+                cmd.Parameters.AddWithValue("@manv", maNV ?? string.Empty);
+                cmd.Parameters.AddWithValue("@ngaydau", ngayDauCuaThang ?? string.Empty);
+                cmd.Parameters.AddWithValue("@ngaydau2", ngayDauThangsau ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) maLuong = sdr["MALUONG"].ToString();
+                }
             }
             connection.Close();
             return maLuong;

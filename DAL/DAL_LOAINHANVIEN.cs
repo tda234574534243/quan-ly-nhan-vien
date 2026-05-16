@@ -22,13 +22,18 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO LOAINHANVIEN VALUES ('{0}', N'{1}','{2}'"
-                , loaiNhanVien.Maloainv, loaiNhanVien.Tenloainv, loaiNhanVien.Mucluongcoban);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO LOAINHANVIEN(MALOAINV, TENLOAINV, MUCLUONGCOBAN) VALUES(@maloainv, @tenloai, @mucluong)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maloainv", loaiNhanVien.Maloainv ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@tenloai", loaiNhanVien.Tenloainv ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@mucluong", loaiNhanVien.Mucluongcoban);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MALOAINV VARCHAR(10) PRIMARY KEY,
@@ -39,39 +44,47 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE LOAINHANVIEN " +
-                "SET TENLOAINV=N'{0}', MUCLUONGCOBAN='{1}'" + "WHERE MALOAINV = '{2}'",
-            loaiNhanVien.Tenloainv, loaiNhanVien.Mucluongcoban, loaiNhanVien.Maloainv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "UPDATE LOAINHANVIEN SET TENLOAINV=@ten, MUCLUONGCOBAN=@mucluong WHERE MALOAINV = @maloainv";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@ten", loaiNhanVien.Tenloainv ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@mucluong", loaiNhanVien.Mucluongcoban);
+                    cmd.Parameters.AddWithValue("@maloainv", loaiNhanVien.Maloainv ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaLoaiNhanVien(string maloainv)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM LOAINHANVIEN WHERE MALOAINV = '{0}'", maloainv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "DELETE FROM LOAINHANVIEN WHERE MALOAINV = @maloainv";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maloainv", maloainv ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public string TimKiemTheoLoaiNhanVien(string loaiNV)
         {
             string maLoaiNV = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT * FROM LOAINHANVIEN WHERE TENLOAINV = N'{0}'", loaiNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MALOAINV FROM LOAINHANVIEN WHERE TENLOAINV = @ten", connection))
             {
-                maLoaiNV = sdr["MALOAINV"].ToString();
+                cmd.Parameters.AddWithValue("@ten", loaiNV ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) maLoaiNV = sdr["MALOAINV"].ToString();
+                }
             }
             connection.Close();
             return maLoaiNV;
@@ -81,13 +94,13 @@ namespace DAL
         {
             string loaiNV = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT * FROM LOAINHANVIEN WHERE MALOAINV = N'{0}'", maLoaiNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT TENLOAINV FROM LOAINHANVIEN WHERE MALOAINV = @maloainv", connection))
             {
-                loaiNV = sdr["TENLOAINV"].ToString();
+                cmd.Parameters.AddWithValue("@maloainv", maLoaiNV ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) loaiNV = sdr["TENLOAINV"].ToString();
+                }
             }
             connection.Close();
             return loaiNV;
@@ -97,13 +110,10 @@ namespace DAL
         {
             List<string> listLoaiNhanVien = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT TENLOAINV FROM LOAINHANVIEN");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT TENLOAINV FROM LOAINHANVIEN", connection))
+            using (SqlDataReader sdr = cmd.ExecuteReader())
             {
-                listLoaiNhanVien.Add(sdr[0].ToString());
+                while (sdr.Read()) listLoaiNhanVien.Add(sdr[0].ToString());
             }
             connection.Close();
             return listLoaiNhanVien;

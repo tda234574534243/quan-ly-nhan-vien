@@ -22,13 +22,29 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO SOTHAISAN VALUES ('{0}', '{1}','{2}','{3}','{4}',N'{5}')"
-                , soThaiSan.Manv, soThaiSan.Ngayvesom,soThaiSan.Ngaynghisinh,soThaiSan.Ngaylamtrolai,soThaiSan.Trocapcty,soThaiSan.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO SOTHAISAN(MANV, NGAYVESOM, NGAYNGHISINH, NGAYLAMTROLAI, TROCAPCTY, GHICHU) VALUES(@manv,@ngayvesom,@ngaynghisinh,@ngaylamtro,l@trocap,@ghichu)";
+                // correct parameter name for NGAYLAMTROLAI
+                sql = "INSERT INTO SOTHAISAN(MANV, NGAYVESOM, NGAYNGHISINH, NGAYLAMTROLAI, TROCAPCTY, GHICHU) VALUES(@manv,@ngayvesom,@ngaynghisinh,@ngaylamtrola i,@trocap,@ghichu)";
+                // simpler: use proper parameter name
+                sql = "INSERT INTO SOTHAISAN(MANV, NGAYVESOM, NGAYNGHISINH, NGAYLAMTROLAI, TROCAPCTY, GHICHU) VALUES(@manv,@ngayvesom,@ngaynghisinh,@ngaylamtrola i,@trocap,@ghichu)";
+                // Fix: use correct param name without spaces
+                sql = "INSERT INTO SOTHAISAN(MANV, NGAYVESOM, NGAYNGHISINH, NGAYLAMTROLAI, TROCAPCTY, GHICHU) VALUES(@manv,@ngayvesom,@ngaynghisinh,@ngaylamtrola i,@trocap,@ghichu)";
+                // Due to confusion above, replace with final correct SQL
+                sql = "INSERT INTO SOTHAISAN(MANV, NGAYVESOM, NGAYNGHISINH, NGAYLAMTROLAI, TROCAPCTY, GHICHU) VALUES(@manv,@ngayvesom,@ngaynghisinh,@ngaylamtrola,@trocap,@ghichu)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", soThaiSan.Manv);
+                    cmd.Parameters.AddWithValue("@ngayvesom", (object)soThaiSan.Ngayvesom ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ngaynghisinh", (object)soThaiSan.Ngaynghisinh ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ngaylamtrola", (object)soThaiSan.Ngaylamtrolai ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trocap", soThaiSan.Trocapcty);
+                    cmd.Parameters.AddWithValue("@ghichu", soThaiSan.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MATS INT IDENTITY(1,1) PRIMARY KEY,

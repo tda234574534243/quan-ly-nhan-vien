@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DAL_Audit.cs" />
     <Compile Include="DAL_BANGCHAMCONG.cs" />
     <Compile Include="DAL_BANGCHAMCONGTHUVIEC.cs" />
     <Compile Include="DAL_BANGLUONG.cs" />

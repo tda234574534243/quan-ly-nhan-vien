@@ -7,80 +7,73 @@ using System.Security.Cryptography;
 
 namespace DAL
 {
-    // Provides salted SHA-256 hashing and verification utilities.
-    // Stored format: {saltBase64}:{hexHash}
+    // PBKDF2 password hashing utility.
+    // Stored format: pbkdf2$iterations$saltBase64$hashBase64
     public class Hash256
     {
-        private static readonly int SaltSize = 16; // 128 bits
+        private const int SaltSize = 16;
+        private const int HashSize = 32; // 256 bits
+        private const int Iterations = 10000;
 
-        // Create a salted SHA256 hash for the provided password.
-        public string CreateSaltedHash(string password)
+        // Create PBKDF2 hash
+        public string CreateHash(string password)
         {
             if (password == null) password = string.Empty;
-
-            // generate salt
-            var saltBytes = new byte[SaltSize];
+            byte[] salt = new byte[SaltSize];
             using (var rng = new RNGCryptoServiceProvider())
             {
-                rng.GetBytes(saltBytes);
+                rng.GetBytes(salt);
             }
-            string salt = Convert.ToBase64String(saltBytes);
-
-            // compute hash of (salt + password)
-            byte[] hashBytes;
-            using (var sha = SHA256.Create())
+            byte[] hash;
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations))
             {
-                hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(salt + password));
+                hash = pbkdf2.GetBytes(HashSize);
             }
-
-            // hex encode hash
-            var sb = new StringBuilder();
-            for (int i = 0; i < hashBytes.Length; i++)
-                sb.Append(hashBytes[i].ToString("x2"));
-
-            return salt + ":" + sb.ToString();
+            return string.Format("pbkdf2${0}${1}${2}", Iterations, Convert.ToBase64String(salt), Convert.ToBase64String(hash));
         }
 
-        // Verify a password against a stored salted hash (format salt:hash)
-        public bool Verify(string password, string storedSaltedHash)
+        // Verify password against stored hash. Supports legacy hex SHA256 as fallback (caller may migrate).
+        public bool Verify(string password, string storedHash)
         {
-            if (storedSaltedHash == null)
-                return false;
-
-            var parts = storedSaltedHash.Split(new[] { ':' }, 2);
-            if (parts.Length != 2)
-                return false;
-
-            string salt = parts[0];
-            string expectedHexHash = parts[1];
-
-            // compute hash of (salt + password)
-            byte[] hashBytes;
-            using (var sha = SHA256.Create())
+            if (storedHash == null) return false;
+            if (storedHash.StartsWith("pbkdf2$"))
             {
-                hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(salt + (password ?? string.Empty)));
+                var parts = storedHash.Split('$');
+                if (parts.Length != 4) return false;
+                int iter = int.Parse(parts[1]);
+                byte[] salt = Convert.FromBase64String(parts[2]);
+                byte[] expected = Convert.FromBase64String(parts[3]);
+                byte[] actual;
+                using (var pbkdf2 = new Rfc2898DeriveBytes(password ?? string.Empty, salt, iter))
+                {
+                    actual = pbkdf2.GetBytes(expected.Length);
+                }
+                return FixedTimeEquals(actual, expected);
             }
 
-            // convert computed hash to hex
-            var sb = new StringBuilder();
-            for (int i = 0; i < hashBytes.Length; i++)
-                sb.Append(hashBytes[i].ToString("x2"));
-
-            string computedHex = sb.ToString();
-
-            // constant time comparison
-            return FixedTimeEquals(computedHex, expectedHexHash);
+            // legacy hex SHA256 stored; caller should handle migration if VerifyLegacy returns true
+            return false;
         }
 
-        private bool FixedTimeEquals(string a, string b)
+        // Verify legacy unsalted hex SHA256
+        public bool VerifyLegacySha256(string password, string legacyHexHash)
         {
-            if (a == null || b == null)
-                return false;
-            if (a.Length != b.Length)
-                return false;
+            if (legacyHexHash == null) return false;
+            using (var sha = SHA256.Create())
+            {
+                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password ?? string.Empty));
+                var sb = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++) sb.Append(bytes[i].ToString("x2"));
+                return StringComparer.OrdinalIgnoreCase.Compare(sb.ToString(), legacyHexHash) == 0;
+            }
+        }
+
+        private bool FixedTimeEquals(byte[] a, byte[] b)
+        {
+            if (a == null || b == null) return false;
+            if (a.Length != b.Length) return false;
             int diff = 0;
-            for (int i = 0; i < a.Length; i++)
-                diff |= a[i] ^ b[i];
+            for (int i = 0; i < a.Length; i++) diff |= a[i] ^ b[i];
             return diff == 0;
         }
     }

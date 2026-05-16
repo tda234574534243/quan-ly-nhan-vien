@@ -22,13 +22,20 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO NVTHOIVIEC VALUES ('{0}', N'{1}','{2}','{3}',N'{4}')"
-                , nvThoiViec.Manv, nvThoiViec.Hoten,nvThoiViec.Cmnd_cccd,nvThoiViec.Ngaythoiviec,nvThoiViec.Lydo);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO NVTHOIVIEC(MANV, HOTEN, CMND_CCCD, NGAYTHOIVIEC, LYDO) VALUES(@manv,@hoten,@cmnd,@ngay,@lydo)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", nvThoiViec.Manv);
+                    cmd.Parameters.AddWithValue("@hoten", nvThoiViec.Hoten ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@cmnd", nvThoiViec.Cmnd_cccd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@ngay", (object)nvThoiViec.Ngaythoiviec ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@lydo", nvThoiViec.Lydo ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 MANV INT PRIMARY KEY,
@@ -39,46 +46,52 @@ LYDO NVARCHAR(50)
  */
         public bool SuaNVThoiViec(DTO_NVTHOIVIEC nvThoiViec)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("UPDATE NVTHOIVIEC " +
-                "SET HOTEN=N'{0}', CMND_CCCD='{1}',NGAYTHOIVIEC='{2}',LYDO='{3}' " +
-                "WHERE MANV = '{4}'", nvThoiViec.Hoten, nvThoiViec.Cmnd_cccd, nvThoiViec.Ngaythoiviec,nvThoiViec.Lydo,nvThoiViec.Manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
+            {
+                string sql = "UPDATE NVTHOIVIEC SET HOTEN=@hoten, CMND_CCCD=@cmnd, NGAYTHOIVIEC=@ngay, LYDO=@lydo WHERE MANV=@manv";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@hoten", nvThoiViec.Hoten ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@cmnd", nvThoiViec.Cmnd_cccd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@ngay", (object)nvThoiViec.Ngaythoiviec ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@lydo", nvThoiViec.Lydo ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@manv", nvThoiViec.Manv);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaNVThoiViec(int manv)
         {
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("DELETE FROM NVTHOIVIEC WHERE MANV = '{0}'", manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM NVTHOIVIEC WHERE MANV = @manv", connection))
+                {
+                    cmd.Parameters.AddWithValue("@manv", manv);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public int SoLuongNhanVienNghiViec(int thang, int nam)
         {
             int n = 0;
-            if (connection.State != ConnectionState.Open)
-                connection.Open();
-            string sql = string.Format("select * from NVTHOIVIEC Where month(NGAYTHOIVIEC)='{0}' AND year (NGAYTHOIVIEC) ='{1}'", thang, nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            if (connection.State != ConnectionState.Open) connection.Open();
+            try
             {
-                n++;
+                using (SqlCommand cmd = new SqlCommand("SELECT COUNT(1) FROM NVTHOIVIEC WHERE MONTH(NGAYTHOIVIEC)=@thang AND YEAR(NGAYTHOIVIEC)=@nam", connection))
+                {
+                    cmd.Parameters.AddWithValue("@thang", thang);
+                    cmd.Parameters.AddWithValue("@nam", nam);
+                    object res = cmd.ExecuteScalar();
+                    if (res != null) n = Convert.ToInt32(res);
+                }
+                return n;
             }
-            if (!reader.IsClosed)
-                reader.Close();
-            connection.Close();
-            return n;
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
     }
 }

@@ -22,13 +22,20 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO PHONGBAN VALUES ('{0}', '{1}',N'{2}','{3}',N'{4}')"
-                , phongBan.Maphong, phongBan.Mabp, phongBan.Tenphong, phongBan.Ngaythanhlap,phongBan.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "INSERT INTO PHONGBAN(MAPHONG, MABP, TENPHONG, NGAYTHANHLAP, GHICHU) VALUES(@maphong, @mabp, @tenphong, @ngay, @ghichu)";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@maphong", phongBan.Maphong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@mabp", phongBan.Mabp ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@tenphong", phongBan.Tenphong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@ngay", phongBan.Ngaythanhlap == default(DateTime) ? (object)DBNull.Value : (object)phongBan.Ngaythanhlap);
+                    cmd.Parameters.AddWithValue("@ghichu", phongBan.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
 	MAPHONG VARCHAR(6) PRIMARY KEY,
@@ -41,39 +48,48 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE PHONGBAN " +
-                "SET MABP='{0}' ,TENPHONG=N'{1}', NGAYTHANHLAP='{2}',GHICHU=N'{3}'" + "WHERE MAPHONG = '{4}'",
-            phongBan.Mabp,phongBan.Tenphong, phongBan.Ngaythanhlap, phongBan.Ghichu, phongBan.Maphong);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                string sql = "UPDATE PHONGBAN SET MABP=@mabp, TENPHONG=@tenphong, NGAYTHANHLAP=@ngay, GHICHU=@ghichu WHERE MAPHONG=@maphong";
+                using (SqlCommand cmd = new SqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@mabp", phongBan.Mabp ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@tenphong", phongBan.Tenphong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@ngay", phongBan.Ngaythanhlap == default(DateTime) ? (object)DBNull.Value : (object)phongBan.Ngaythanhlap);
+                    cmd.Parameters.AddWithValue("@ghichu", phongBan.Ghichu ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@maphong", phongBan.Maphong ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaPhongBan(string maphong)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM PHONGBAN WHERE MAPHONG = '{0}'", maphong);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("DELETE FROM PHONGBAN WHERE MAPHONG = @maphong", connection))
+                {
+                    cmd.Parameters.AddWithValue("@maphong", maphong ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public string TimKiemMaPhongBan(string tenPhong)
         {
             string maPhong = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT * FROM PHONGBAN WHERE TENPHONG = N'{0}'", tenPhong);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MAPHONG FROM PHONGBAN WHERE TENPHONG = @ten", connection))
             {
-                maPhong = sdr["MAPHONG"].ToString();
+                cmd.Parameters.AddWithValue("@ten", tenPhong ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) maPhong = sdr["MAPHONG"].ToString();
+                }
             }
             connection.Close();
             return maPhong;
@@ -83,13 +99,13 @@ namespace DAL
         {
             string tenPhong = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT * FROM PHONGBAN WHERE MAPHONG = N'{0}'", maPhong);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT TENPHONG FROM PHONGBAN WHERE MAPHONG = @maphong", connection))
             {
-                tenPhong = sdr["TENPHONG"].ToString();
+                cmd.Parameters.AddWithValue("@maphong", maPhong ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) tenPhong = sdr["TENPHONG"].ToString();
+                }
             }
             connection.Close();
             return tenPhong;
@@ -99,13 +115,14 @@ namespace DAL
         {
             string tenPhong = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT * FROM PHONGBAN WHERE MAPHONG = N'{0}'", maPhong);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MABP FROM PHONGBAN WHERE MAPHONG = @maphong", connection))
             {
-                tenPhong = sdr["MABP"].ToString();
+                cmd.Parameters.AddWithValue("@maphong", maPhong ?? string.Empty);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read())
+                        tenPhong = sdr["MABP"].ToString();
+                }
             }
             connection.Close();
             return tenPhong;
@@ -115,17 +132,24 @@ namespace DAL
         {
             List<string> listPhongBan = new List<string>();
             CheckConnection();
-            string sql;
             if (maBP == "")
-                sql = string.Format("SELECT TENPHONG FROM PHONGBAN");
-            else
-                sql = string.Format("SELECT TENPHONG FROM PHONGBAN WHERE MABP = N'{0}'", maBP);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
             {
-                listPhongBan.Add(sdr[0].ToString());
+                using (SqlCommand cmd = new SqlCommand("SELECT TENPHONG FROM PHONGBAN", connection))
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) listPhongBan.Add(sdr[0].ToString());
+                }
+            }
+            else
+            {
+                using (SqlCommand cmd = new SqlCommand("SELECT TENPHONG FROM PHONGBAN WHERE MABP = @mabp", connection))
+                {
+                    cmd.Parameters.AddWithValue("@mabp", maBP ?? string.Empty);
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read()) listPhongBan.Add(sdr[0].ToString());
+                    }
+                }
             }
             connection.Close();
             return listPhongBan;
@@ -134,13 +158,10 @@ namespace DAL
         {
             List<string> listMaPhongBan = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT MAPHONG FROM PHONGBAN");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("SELECT MAPHONG FROM PHONGBAN", connection))
+            using (SqlDataReader sdr = cmd.ExecuteReader())
             {
-                listMaPhongBan.Add(sdr[0].ToString());
+                while (sdr.Read()) listMaPhongBan.Add(sdr[0].ToString());
             }
             connection.Close();
             return listMaPhongBan;

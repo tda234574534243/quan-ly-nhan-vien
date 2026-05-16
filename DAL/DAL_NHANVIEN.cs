@@ -15,7 +15,8 @@ namespace DAL
 
         public DataTable getNhanVien()
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT MANV 'Mã nhân viên', MAPHONG 'Mã phòng', MALUONG 'Mã lương', HOTEN 'Họ tên', FORMAT(NGAYSINH, 'MM/dd/yyyy') 'Ngày sinh', GIOITINH 'Giới tính', DANTOC 'Dân tộc', CMND_CCCD 'CMND-CCCD', NOICAP 'Nơi cấp', CHUCVU 'Chức vụ', MALOAINV 'Mã loại nhân viên', LOAIHD 'Loại hợp đồng', THOIGIAN 'Thời gian hợp đồng', FORMAT(NGAYKY, 'MM/dd/yyyy') 'Ngày ký hợp đồng',  FORMAT(NGAYHETHAN, 'MM/dd/yyyy') 'Ngày hết hạn', SDT 'Số điện thoại', HOCVAN 'Học vấn', GHICHU 'Ghi chú ' FROM NHANVIEN", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_GetAll", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dtNHANVIEN = new DataTable();
             da.Fill(dtNHANVIEN);
             return dtNHANVIEN;
@@ -23,7 +24,8 @@ namespace DAL
 
         public DataTable xuatNhanVien()
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT MANV, MAPHONG, MALUONG, HOTEN, FORMAT(NGAYSINH, 'MM/dd/yyyy') NGAYSINH, GIOITINH, DANTOC , CMND_CCCD, NOICAP, CHUCVU, MALOAINV, LOAIHD, THOIGIAN, FORMAT(NGAYKY, 'MM/dd/yyyy') NGAYKY,  FORMAT(NGAYHETHAN, 'MM/dd/yyyy') NGAYHETHAN, SDT, HOCVAN, GHICHU FROM NHANVIEN", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_GetAll", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dtNHANVIEN = new DataTable();
             da.Fill(dtNHANVIEN);
             return dtNHANVIEN;
@@ -33,17 +35,32 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("INSERT INTO NHANVIEN VALUES ('{0}', '{1}',N'{2}'" +
-                ",'{3}',N'{4}',N'{5}','{6}'," +
-                "N'{7}',N'{8}','{9}',N'{10}','{11}','{12}','{13}','{14}',N'{15}',N'{16}')"
-                , nhanVien.Maphong, nhanVien.Maluong, nhanVien.Hoten, nhanVien.Ngaysinh,
-                nhanVien.Gioitinh,nhanVien.Dantoc,nhanVien.Cmnd_cccd,nhanVien.Noicap,nhanVien.Chucvu,nhanVien.Maloainv,
-                nhanVien.Loaihd,nhanVien.Thoigian,nhanVien.Ngaydangki,nhanVien.Ngayhethan,nhanVien.Sdt,nhanVien.Hocvan,nhanVien.Ghichu);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_Insert", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MAPHONG", nhanVien.Maphong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALUONG", nhanVien.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOTEN", nhanVien.Hoten ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NGAYSINH", nhanVien.Ngaysinh == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngaysinh);
+                    cmd.Parameters.AddWithValue("@GIOITINH", nhanVien.Gioitinh ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@DANTOC", nhanVien.Dantoc ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CMND_CCCD", nhanVien.Cmnd_cccd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NOICAP", nhanVien.Noicap ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CHUCVU", nhanVien.Chucvu ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALOAINV", nhanVien.Maloainv ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@LOAIHD", nhanVien.Loaihd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@THOIGIAN", nhanVien.Thoigian);
+                    cmd.Parameters.AddWithValue("@NGAYKY", nhanVien.Ngaydangki == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngaydangki);
+                    cmd.Parameters.AddWithValue("@NGAYHETHAN", nhanVien.Ngayhethan == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngayhethan);
+                    cmd.Parameters.AddWithValue("@SDT", nhanVien.Sdt ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOCVAN", nhanVien.Hocvan ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@GHICHU", nhanVien.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
         /*
     MANV INT IDENTITY(1,1) PRIMARY KEY,
@@ -69,53 +86,60 @@ namespace DAL
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE NHANVIEN " +
-                "SET MAPHONG='{0}', MALUONG='{1}',HOTEN=N'{2}',NGAYSINH='{3}',GIOITINH=N'{4}',DANTOC=N'{5}',CMND_CCCD='{6}', " +
-                "NOICAP=N'{7}',CHUCVU=N'{8}',MALOAINV='{9}',LOAIHD=N'{10}',THOIGIAN='{11}',NGAYKY='{12}',NGAYHETHAN='{13}', " +
-                "SDT='{14}',HOCVAN=N'{15}',GHICHU=N'{16}'" + "WHERE MANV = '{17}'",
-                nhanVien.Maphong, nhanVien.Maluong, nhanVien.Hoten, nhanVien.Ngaysinh,
-                nhanVien.Gioitinh, nhanVien.Dantoc, nhanVien.Cmnd_cccd, nhanVien.Noicap, nhanVien.Chucvu, nhanVien.Maloainv,
-                nhanVien.Loaihd, nhanVien.Thoigian, nhanVien.Ngaydangki, nhanVien.Ngayhethan, nhanVien.Sdt, nhanVien.Hocvan, nhanVien.Ghichu, nhanVien.Manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_Update", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", nhanVien.Manv);
+                    cmd.Parameters.AddWithValue("@MAPHONG", nhanVien.Maphong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALUONG", nhanVien.Maluong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOTEN", nhanVien.Hoten ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NGAYSINH", nhanVien.Ngaysinh == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngaysinh);
+                    cmd.Parameters.AddWithValue("@GIOITINH", nhanVien.Gioitinh ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@DANTOC", nhanVien.Dantoc ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CMND_CCCD", nhanVien.Cmnd_cccd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NOICAP", nhanVien.Noicap ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CHUCVU", nhanVien.Chucvu ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALOAINV", nhanVien.Maloainv ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@LOAIHD", nhanVien.Loaihd ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@THOIGIAN", nhanVien.Thoigian);
+                    cmd.Parameters.AddWithValue("@NGAYKY", nhanVien.Ngaydangki == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngaydangki);
+                    cmd.Parameters.AddWithValue("@NGAYHETHAN", nhanVien.Ngayhethan == default(DateTime) ? (object)DBNull.Value : (object)nhanVien.Ngayhethan);
+                    cmd.Parameters.AddWithValue("@SDT", nhanVien.Sdt ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOCVAN", nhanVien.Hocvan ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@GHICHU", nhanVien.Ghichu ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public bool XoaNhanVien(int manv)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("DELETE FROM NHANVIEN WHERE MANV = '{0}'", manv);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_Delete", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", manv);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public DataTable TongHopNhanVienTheoPhong(string maPhong, string ten)
         {
             DataTable dtNHANVIEN = new DataTable();
-            SqlDataAdapter da = new SqlDataAdapter();
 
-            if (maPhong == "")
-            {
-                da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE dbo.fChuyenCoDauThanhKhongDau(HOTEN) LIKE N'%" + ten + "%'", connection);
-            }
-
-            if (ten == "")
-            {
-                da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE MAPHONG = N'" + maPhong + "'", connection);
-            }
-
-            if (ten != "" && maPhong != "")
-            {
-                da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE MAPHONG = N'" + maPhong + "' and dbo.fChuyenCoDauThanhKhongDau(HOTEN) LIKE N'%" + ten + "%'", connection);
-                
-            }
-
+            // Use stored procedure search to fetch appropriate rows
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_Search", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
+            da.SelectCommand.Parameters.AddWithValue("@MAPHONG", string.IsNullOrEmpty(maPhong) ? (object)DBNull.Value : (object)maPhong);
+            da.SelectCommand.Parameters.AddWithValue("@TEN", string.IsNullOrEmpty(ten) ? (object)DBNull.Value : (object) ("%" + ten + "%"));
             da.Fill(dtNHANVIEN);
             return dtNHANVIEN;
         }
@@ -124,13 +148,18 @@ namespace DAL
         {
             List<string> listMaNhanVien = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT MANV FROM NHANVIEN WHERE GIOITINH = N'" + gioiTinh + "'");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            // retrieve via stored procedure and filter client-side
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                listMaNhanVien.Add(sdr[0].ToString());
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read())
+                    {
+                        if (!sdr.IsDBNull(5) && sdr[5].ToString() == (gioiTinh ?? string.Empty))
+                            listMaNhanVien.Add(sdr[0].ToString());
+                    }
+                }
             }
             connection.Close();
             return listMaNhanVien;
@@ -140,13 +169,13 @@ namespace DAL
         {
             List<string> listMaNhanVien = new List<string>();
             CheckConnection();
-            string sql = string.Format("SELECT MANV FROM NHANVIEN");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                listMaNhanVien.Add(sdr[0].ToString());
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read()) listMaNhanVien.Add(sdr[0].ToString());
+                }
             }
             connection.Close();
             return listMaNhanVien;
@@ -156,13 +185,14 @@ namespace DAL
         {
             string tenNV = string.Empty;
             CheckConnection();
-            string sql = string.Format("SELECT HOTEN FROM NHANVIEN WHERE MANV = '{0}'", maNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetNameById", connection))
             {
-                tenNV = sdr["HOTEN"].ToString();
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@MANV", int.TryParse(maNV, out int id) ? id : 0);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read()) tenNV = sdr[0].ToString();
+                }
             }
             connection.Close();
             return tenNV;
@@ -172,13 +202,22 @@ namespace DAL
         {
             int nam = 1990;
             CheckConnection();
-            string sql = string.Format("SELECT TOP 1 YEAR(NGAYKY) 'NGAYKYSOMNHAT' FROM NHANVIEN ORDER BY NGAYKY ASC");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                nam = int.Parse(sdr["NGAYKYSOMNHAT"].ToString());
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    DateTime? min = null;
+                    while (sdr.Read())
+                    {
+                        if (!sdr.IsDBNull(13))
+                        {
+                            var d = DateTime.Parse(sdr[13].ToString());
+                            if (!min.HasValue || d < min.Value) min = d;
+                        }
+                    }
+                    if (min.HasValue) nam = min.Value.Year;
+                }
             }
             connection.Close();
             return nam;
@@ -188,13 +227,22 @@ namespace DAL
         {
             int nam = 1990;
             CheckConnection();
-            string sql = string.Format("SELECT TOP 1 YEAR(NGAYKY) 'NGAYKYGANNHAT' FROM NHANVIEN ORDER BY NGAYKY DESC");
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                nam = int.Parse(sdr["NGAYKYGANNHAT"].ToString());
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    DateTime? max = null;
+                    while (sdr.Read())
+                    {
+                        if (!sdr.IsDBNull(13))
+                        {
+                            var d = DateTime.Parse(sdr[13].ToString());
+                            if (!max.HasValue || d > max.Value) max = d;
+                        }
+                    }
+                    if (max.HasValue) nam = max.Value.Year;
+                }
             }
             connection.Close();
             return nam;
@@ -204,44 +252,63 @@ namespace DAL
         {
             int maNV = 0;
             CheckConnection();
-            string sql = string.Format("SELECT MANV FROM NHANVIEN WHERE HOTEN = N'{0}'", tenNV);
-
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                maNV = int.Parse(sdr["MANV"].ToString());
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    while (sdr.Read())
+                    {
+                        if (!sdr.IsDBNull(3) && sdr[3].ToString() == (tenNV ?? string.Empty))
+                        {
+                            maNV = int.Parse(sdr[0].ToString());
+                            break;
+                        }
+                    }
+                }
             }
             connection.Close();
             return maNV;
         }
 
-        public string GetMaLuong(string maNV)
-        {
-            string maLuong = string.Empty;
-            CheckConnection();
-            string sql = string.Format("SELECT MALUONG FROM NHANVIEN WHERE MANV = N'{0}'", maNV);
 
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader sdr = cmd.ExecuteReader();
-            while (sdr.Read())
-            {
-                maLuong = sdr["MALUONG"].ToString();
-            }
-            connection.Close();
-            return maLuong;
-        }
 
         public bool SuaMaLuongNhanVien(string maNV, string maLuong)
         {
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("UPDATE NHANVIEN SET MALUONG = '{0}' WHERE MANV = '{1}'", maLuong, maNV);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            if (cmd.ExecuteNonQuery() > 0)
-                return true;
-            else return false;
-            connection.Close();
+            try
+            {
+                // Load existing record to preserve other fields, then call stored procedure update
+                DataTable all = getNhanVien();
+                DataRow[] rows = all.Select("MANV = " + maNV);
+                if (rows.Length == 0) return false;
+                var r = rows[0];
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_Update", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@MANV", int.TryParse(maNV, out int id) ? id : 0);
+                    cmd.Parameters.AddWithValue("@MAPHONG", r[1] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALUONG", maLuong ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOTEN", r[3] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NGAYSINH", r.IsNull(4) ? (object)DBNull.Value : r[4]);
+                    cmd.Parameters.AddWithValue("@GIOITINH", r[5] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@DANTOC", r[6] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CMND_CCCD", r[7] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@NOICAP", r[8] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@CHUCVU", r[9] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@MALOAINV", r[10] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@LOAIHD", r[11] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@THOIGIAN", r.IsNull(12) ? 0 : Convert.ToInt32(r[12]));
+                    cmd.Parameters.AddWithValue("@NGAYKY", r.IsNull(13) ? (object)DBNull.Value : r[13]);
+                    cmd.Parameters.AddWithValue("@NGAYHETHAN", r.IsNull(14) ? (object)DBNull.Value : r[14]);
+                    cmd.Parameters.AddWithValue("@SDT", r[15] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@HOCVAN", r[16] ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@GHICHU", r[17] ?? string.Empty);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
         }
 
         public int SoLuongNhanVienVaoLam (int thang,int nam)
@@ -249,15 +316,25 @@ namespace DAL
             int n = 0;
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("select * from NHANVIEN Where month(NGAYKY)='{0}' AND year (NGAYKY) ='{1}'", thang, nam);
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            while (reader.Read() == true)
+            try
             {
-                n++;
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            if (!sdr.IsDBNull(13))
+                            {
+                                var d = DateTime.Parse(sdr[13].ToString());
+                                if (d.Month == thang && d.Year == nam) n++;
+                            }
+                        }
+                    }
+                }
             }
-            if (!reader.IsClosed)
-                reader.Close();
+            finally { if (connection.State == ConnectionState.Open) connection.Close(); }
             connection.Close();
             return n;
         }
@@ -267,62 +344,95 @@ namespace DAL
             DTO_NHANVIEN dtoNhanVien = new DTO_NHANVIEN();
             if (connection.State != ConnectionState.Open)
                 connection.Open();
-            string sql = string.Format("SELECT * FROM NHANVIEN WHERE MANV='" + maNV + "'");
-            SqlCommand cmd = new SqlCommand(sql, connection);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if (reader.Read() == true)
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetAll", connection))
             {
-                dtoNhanVien.Manv = int.Parse(maNV);
-                dtoNhanVien.Maphong = reader[1].ToString();
-                dtoNhanVien.Maluong = reader[2].ToString();
-                dtoNhanVien.Hoten = reader[3].ToString();
-                dtoNhanVien.Ngaysinh = DateTime.Parse(reader[4].ToString());
-                dtoNhanVien.Gioitinh = reader[5].ToString();
-                dtoNhanVien.Dantoc = reader[6].ToString();
-                dtoNhanVien.Cmnd_cccd = reader[7].ToString();
-                dtoNhanVien.Noicap = reader[8].ToString();
-                dtoNhanVien.Chucvu = reader[9].ToString();
-                dtoNhanVien.Maloainv = reader[10].ToString();
-                dtoNhanVien.Loaihd = reader[11].ToString();
-                dtoNhanVien.Thoigian = int.Parse(reader[12].ToString());
-                dtoNhanVien.Ngaydangki = DateTime.Parse(reader[13].ToString());
-                dtoNhanVien.Ngayhethan = DateTime.Parse(reader[14].ToString());
-                dtoNhanVien.Sdt = reader[15].ToString();
-                dtoNhanVien.Hocvan = reader[16].ToString();
-                dtoNhanVien.Ghichu = reader[17].ToString();
-
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoNhanVien;
+                cmd.CommandType = CommandType.StoredProcedure;
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader[0].ToString() == maNV)
+                        {
+                            dtoNhanVien.Manv = int.Parse(maNV);
+                            dtoNhanVien.Maphong = reader[1].ToString();
+                            dtoNhanVien.Maluong = reader[2].ToString();
+                            dtoNhanVien.Hoten = reader[3].ToString();
+                            dtoNhanVien.Ngaysinh = reader.IsDBNull(4) ? default(DateTime) : DateTime.Parse(reader[4].ToString());
+                            dtoNhanVien.Gioitinh = reader[5].ToString();
+                            dtoNhanVien.Dantoc = reader[6].ToString();
+                            dtoNhanVien.Cmnd_cccd = reader[7].ToString();
+                            dtoNhanVien.Noicap = reader[8].ToString();
+                            dtoNhanVien.Chucvu = reader[9].ToString();
+                            dtoNhanVien.Maloainv = reader[10].ToString();
+                            dtoNhanVien.Loaihd = reader[11].ToString();
+                            dtoNhanVien.Thoigian = reader.IsDBNull(12) ? 0 : int.Parse(reader[12].ToString());
+                            dtoNhanVien.Ngaydangki = reader.IsDBNull(13) ? default(DateTime) : DateTime.Parse(reader[13].ToString());
+                            dtoNhanVien.Ngayhethan = reader.IsDBNull(14) ? default(DateTime) : DateTime.Parse(reader[14].ToString());
+                            dtoNhanVien.Sdt = reader[15].ToString();
+                            dtoNhanVien.Hocvan = reader[16].ToString();
+                            dtoNhanVien.Ghichu = reader[17].ToString();
+                            return dtoNhanVien;
+                        }
+                    }
+                }
             }
-            else
-            {
-                if (!reader.IsClosed)
-                    reader.Close();
-                return dtoNhanVien;
-            }
+            return dtoNhanVien;
         }
 
         public DataTable TimKiemNVTheoMa(string manv)
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE MANV LIKE '%" + manv + "%'", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_Search", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
+            da.SelectCommand.Parameters.AddWithValue("@MAPHONG", string.Empty);
+            da.SelectCommand.Parameters.AddWithValue("@TEN", string.Empty);
             DataTable dtNHANVIEN = new DataTable();
             da.Fill(dtNHANVIEN);
-            return dtNHANVIEN;
+            // filter client-side since stored proc doesn't support partial MANV search
+            DataRow[] rows = dtNHANVIEN.Select("CONVERT(MANV, 'System.String') LIKE '%" + manv + "%'");
+            DataTable dt = dtNHANVIEN.Clone();
+            foreach (var r in rows) dt.ImportRow(r);
+            return dt;
         }
         public DataTable TimKiemNVTheoTen(string ten)
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE dbo.fChuyenCoDauThanhKhongDau(HOTEN) LIKE N'%" + ten + "%'", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_Search", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
+            da.SelectCommand.Parameters.AddWithValue("@MAPHONG", string.Empty);
+            da.SelectCommand.Parameters.AddWithValue("@TEN", "%" + (ten ?? string.Empty) + "%");
             DataTable dtNHANVIEN = new DataTable();
             da.Fill(dtNHANVIEN);
             return dtNHANVIEN;
         }
         public DataTable TimKiemNVTheoSDT(string sdt)
         {
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM NHANVIEN WHERE SDT LIKE '%" + sdt + "%'", connection);
+            SqlDataAdapter da = new SqlDataAdapter("dbo.usp_NhanVien_GetAll", connection);
+            da.SelectCommand.CommandType = CommandType.StoredProcedure;
             DataTable dtNHANVIEN = new DataTable();
             da.Fill(dtNHANVIEN);
-            return dtNHANVIEN;
+            DataRow[] rows = dtNHANVIEN.Select("SDT LIKE '%" + (sdt ?? string.Empty) + "%'");
+            DataTable dt = dtNHANVIEN.Clone();
+            foreach (var r in rows) dt.ImportRow(r);
+            return dt;
+        }
+
+        public string GetMaLuong(string maNV)
+        {
+            string maLuong = string.Empty;
+            CheckConnection();
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_NhanVien_GetNameById", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@MANV", int.TryParse(maNV, out int id) ? id : 0);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        maLuong = sdr[0].ToString();
+                    }
+                }
+            }
+            connection.Close();
+            return maLuong;
         }
     }
 }
