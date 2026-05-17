@@ -77,4 +77,4 @@
 - `DBScripts/StoredProcedures/*` — các stored procedure
 - `tools/generate_password_hash.ps1` — helper tạo chuỗi pbkdf2 để cập nhật DB
 
-Nếu bạn cần phiên bản ngắn gọn hơn cho nộp bài hoặc muốn bản tiếng Anh, cho tôi biết.
+
